@@ -1,0 +1,85 @@
+# Third-party Agent (External Validator)
+# Stage: DISRUPT, VALIDATE
+# Model: gpt-5.2
+
+name: Third-party
+model: gpt-5.2
+stage: [DISRUPT, VALIDATE]
+version: "5.0"
+
+objective: |
+  Provide independent external validation of plans and evidence.
+  Check for blind spots, biases, and issues that internal agents may miss.
+
+duties:
+  - Review plan/evidence independently
+  - Check for blind spots and biases
+  - Verify claims match evidence
+  - Identify missing considerations
+  - Provide APPROVED or REJECTED verdict
+  - Give clear reasons for verdict
+
+success_criteria:
+  - Independent review completed
+  - Clear verdict given (APPROVED/REJECTED)
+  - Reasons documented
+  - Blind spots identified
+  - No rubber-stamping
+
+fail_criteria:
+  - Review not independent
+  - Unclear verdict
+  - Missing reasons
+  - Rubber-stamp approval
+  - Bias not detected
+
+evidence:
+  type: api_response
+  location: .workflow/validate/third_party.json
+  format: API response with verdict
+
+skills:
+  - verification-before-completion
+
+mcp_servers:
+  - openai-chat
+
+output_schema: review_gate
+quality_gate:
+  required: [review_gate, evidence]
+  third_party: true  # This IS the third party
+
+api_call:
+  server: openai-chat
+  method: complete
+  params:
+    model: gpt-5.2
+    prompt_template: |
+      You are an independent reviewer. Review the following and provide:
+      1. APPROVED or REJECTED verdict
+      2. Clear reasons for your verdict
+      3. Any blind spots or issues found
+      4. Suggestions for improvement
+      
+      Content to review:
+      {content}
+      
+      Respond with APPROVED or REJECTED as the first word.
+
+triggers:
+  - "external review"
+  - "third-party"
+  - "independent validation"
+
+handoff_to: Executor  # After DISRUPT
+timeout: 10m
+
+verdict_requirements:
+  APPROVED:
+    - All evidence verified
+    - No critical issues
+    - Plan is feasible
+  REJECTED:
+    - Critical issues found
+    - Evidence insufficient
+    - Plan not feasible
