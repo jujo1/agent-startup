@@ -8,27 +8,34 @@
 
 If you're using Claude through the web browser or mobile app, you cannot directly install files. Instead, you'll connect to your infrastructure via **MPC-Gateway**.
 
-### ⚡ 3-Step Setup
+### ⚡ 3 Required Steps
 
-#### 1️⃣ Copy First Conversation Template
+Every web agent must complete these steps:
 
-Open [FIRST_CONVERSATION_TEMPLATE.md](FIRST_CONVERSATION_TEMPLATE.md) and copy the entire template into a new conversation with Claude.
+#### 1️⃣ Clone Startup
+Access the agent-startup repository on GitHub:
+- Repository: https://github.com/jujo1/agent-startup
+- Claude reads documentation (AGENTS_3.md, CLAUDE_2.md)
+- No local installation needed
 
-#### 2️⃣ Claude Connects to Your Infrastructure
+#### 2️⃣ Establish Funnel Connection to cabin-pc
+Connect via Tailscale funnel:
+- Gateway: https://cabin-pc.tail1a496.ts.net
+- Network: Tailscale (tail1a496.ts.net)
+- Target: cabin-pc (100.121.56.65)
+- Secure tunnel established
 
-Claude will automatically:
-- Connect to cabin-pc via MPC-Gateway
-- Read AGENTS_3.md, CLAUDE_2.md, SCHEMAS.md
-- Verify workflow environment
-- Confirm ready for workflows
+#### 3️⃣ Connect MPC-Gateway MCP
+Enable MPC-Gateway MCP server:
+- Endpoint: https://cabin-pc.tail1a496.ts.net/sse
+- Tools: ping, get_status, read_file, remote_exec, etc.
+- Remote access to cabin-pc activated
 
-#### 3️⃣ Start Building
+### 📋 Quick Setup
 
-Once connected, ask Claude:
-```
-Create a simple Python calculator following AGENTS 4.0 workflow.
-Use cabin-pc for execution.
-```
+**Option A**: Copy [FIRST_CONVERSATION_TEMPLATE.md](FIRST_CONVERSATION_TEMPLATE.md) (fastest)
+
+**Option B**: Follow [WEB_AGENT_3_STEPS.md](WEB_AGENT_3_STEPS.md) (detailed guide)
 
 ---
 
