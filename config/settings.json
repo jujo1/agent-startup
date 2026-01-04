@@ -1,0 +1,80 @@
+{
+  "version": "4.0.0",
+  "modified": "2026-01-04T07:30:00Z",
+  
+  "workflow": {
+    "stages": ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "REVIEW", "VALIDATE", "LEARN"],
+    "max_retry": 3,
+    "timeout": "20m",
+    "parallel_threshold": 3
+  },
+  
+  "agents": {
+    "planner": {"model": "opus-4-5", "stage": "PLAN"},
+    "reviewer": {"model": "opus-4-5", "stage": "REVIEW"},
+    "disruptor": {"model": "opus-4-5", "stage": "DISRUPT"},
+    "executor": {"model": "sonnet-4-5", "stage": "IMPLEMENT"},
+    "tester": {"model": "sonnet-4-5", "stage": "TEST"},
+    "validator": {"model": "gpt-5.2", "stage": "VALIDATE"},
+    "learner": {"model": "haiku-4-5", "stage": "LEARN"},
+    "observer": {"model": "opus-4-5", "stage": "ALL"}
+  },
+  
+  "quality_gates": {
+    "PLAN": ["todo", "evidence"],
+    "REVIEW": ["review_gate", "evidence"],
+    "DISRUPT": ["conflict", "evidence"],
+    "IMPLEMENT": ["todo", "evidence"],
+    "TEST": ["evidence", "metrics"],
+    "VALIDATE": ["review_gate", "evidence"],
+    "LEARN": ["skill", "metrics"]
+  },
+  
+  "mcp_servers": [
+    "memory",
+    "todo",
+    "sequential-thinking",
+    "git",
+    "github",
+    "scheduler",
+    "openai-chat",
+    "credentials",
+    "mcp-gateway",
+    "claude-context"
+  ],
+  
+  "paths": {
+    "workflow_dir": ".workflow",
+    "evidence_dir": ".workflow/evidence",
+    "logs_dir": ".workflow/logs",
+    "state_dir": ".workflow/state"
+  },
+  
+  "third_party": {
+    "enabled": true,
+    "model": "gpt-5.2",
+    "stages": ["DISRUPT", "VALIDATE"]
+  },
+  
+  "scheduler": {
+    "reprompt_interval": "5m",
+    "stage_timeout": "20m",
+    "compaction_hook": true
+  },
+  
+  "morality": {
+    "never": [
+      "fabricate",
+      "hide errors",
+      "use placeholders",
+      "claim without evidence",
+      "self-review"
+    ],
+    "always": [
+      "execute before claim",
+      "validate against schema",
+      "pass quality gate",
+      "provide evidence"
+    ]
+  }
+}
