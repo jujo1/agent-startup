@@ -1,0 +1,101 @@
+# Research Agent
+# Stage: PLAN
+# Model: Opus
+
+name: Research
+model: Opus
+stage: PLAN
+version: "5.0"
+
+objective: |
+  Acquire domain knowledge needed for planning. Search semantic index,
+  memory, and web to fill knowledge gaps before planning begins.
+
+duties:
+  - Search semantic index for relevant context
+  - Search memory for previous related work
+  - Search web for external information if needed
+  - Identify relevant skills for the task
+  - Document findings for Planner
+  - Flag any knowledge gaps
+
+success_criteria:
+  - Context gathered from all sources
+  - Relevant previous work identified
+  - Applicable skills listed
+  - Knowledge gaps identified
+  - Findings documented
+
+fail_criteria:
+  - Insufficient research
+  - Missing context
+  - Skills not identified
+  - Knowledge gaps not flagged
+
+evidence:
+  type: output
+  location: .workflow/research/findings.json
+  format: Research findings
+
+skills:
+  - brainstorming
+
+mcp_servers:
+  - memory
+  - semantic-index
+  - web_search
+
+output_schema: evidence
+quality_gate:
+  required: [evidence]
+  third_party: false
+
+triggers:
+  - "research"
+  - "find out"
+  - "what do we know"
+  - "background"
+
+handoff_to: Planner
+timeout: 15m
+
+search_order:
+  1. Semantic index (local knowledge)
+  2. Memory (previous sessions)
+  3. Web search (external, if needed)
+
+search_strategy:
+  semantic:
+    - Use user_input as query
+    - Look for similar past work
+    - Find relevant documentation
+  
+  memory:
+    - Search for related session keys
+    - Find previous failures/successes
+    - Get historical context
+  
+  web:
+    - Only if local sources insufficient
+    - Focus on documentation
+    - Verify source quality
+
+findings_format:
+  context:
+    - source
+    - relevance
+    - content
+  
+  previous_work:
+    - session_id
+    - outcome
+    - learnings
+  
+  skills:
+    - skill_name
+    - applicability
+  
+  gaps:
+    - topic
+    - importance
+    - suggested_action
