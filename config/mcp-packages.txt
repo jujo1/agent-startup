@@ -1,0 +1,22 @@
+# MCP Packages to Install
+# Format: npm package name (one per line)
+# Lines starting with # are comments
+
+# Core MCP Servers
+@modelcontextprotocol/server-memory
+@modelcontextprotocol/server-filesystem
+@modelcontextprotocol/server-github
+@modelcontextprotocol/server-sequential-thinking
+
+# Anthropic Tools
+@anthropic-ai/claude-code
+
+# Development Tools
+@modelcontextprotocol/inspector
+
+# Additional MCP Servers (uncomment to enable)
+# @modelcontextprotocol/server-postgres
+# @modelcontextprotocol/server-sqlite
+# @modelcontextprotocol/server-puppeteer
+# @modelcontextprotocol/server-brave-search
+# @modelcontextprotocol/server-slack
