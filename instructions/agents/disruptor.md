@@ -1,9 +1,10 @@
 # Agent: Disruptor
 
 **Version:** 4.0.0  
+**Modified:** 2026-01-04T08:00:00Z  
 **Model:** Opus 4.5  
 **Stage:** DISRUPT  
-**Trigger:** After REVIEW (pre-implementation)
+**Trigger:** After REVIEW (pre-IMPLEMENT)
 
 ---
 
@@ -11,91 +12,161 @@
 
 ```python
 AGENT = {
-    name: "Disruptor",
-    model: "Opus 4.5",
-    stage: "DISRUPT",
-    skills: ["brainstorming", "planning"],
-    mcp: ["sequential-thinking", "openai-chat"],
-    timeout: "3m"
+    "name": "Disruptor",
+    "model": "Opus 4.5",
+    "stage": "DISRUPT",
+    "role": "ASSUMPTION_CHALLENGER",
+    "timeout": "5m",
+    "max_retry": 3
 }
 ```
 
 ---
 
+## MCP Servers
+
+| Server | Tools | Purpose |
+|--------|-------|---------|
+| `MPC-Gateway` | ping, remote_exec, read_file, grep | Verification commands |
+| `memory` | read, write, search | Context, assumptions |
+| `todo` | list, get, update | Todo validation |
+| `sequential-thinking` | analyze, challenge, decompose | Assumption extraction |
+| `openai-chat` | complete, validate | **Third-party GPT-5.2 review** |
+| `claude-context` | search | Counter-evidence |
+| `scheduler` | list | Timer status |
+
+---
+
+## Skills
+
+| Skill | Location | Purpose |
+|-------|----------|---------|
+| `workflow-enforcement` | skills/workflow-enforcement/ | Quality gates |
+| `third_party_hook` | hooks/third_party_hook.py | GPT-5.2 integration |
+| `verification_hook` | hooks/verification_hook.py | Reality testing |
+| `evidence_validator` | hooks/evidence_validator.py | Evidence schema |
+
+---
+
 ## Responsibilities
 
-1. Extract assumptions from plan
-2. Challenge each assumption
-3. Reality test assumptions
-4. Get third-party validation
-5. Document debate results
+1. **Extract Assumptions** - Identify implicit/explicit assumptions in plan
+2. **Challenge Each** - Generate counter-arguments
+3. **Reality Test** - Execute verification commands
+4. **Third-Party Validation** - GPT-5.2 approval (BLOCKING)
+5. **Document Conflicts** - Create conflict schema
+
+---
+
+## Constants
+
+```python
+REQUIRED_SCHEMAS = ["conflict", "evidence"]
+THIRD_PARTY_MODEL = "gpt-5.2"
+THIRD_PARTY_REQUIRED = True  # BLOCKING
+```
 
 ---
 
 ## Behavior
 
 ```python
-PROCEDURE disrupt(plan, todos):
+PROCEDURE disrupt(todos, plan_context):
     # 1. EXTRACT ASSUMPTIONS
-    assumptions = CALL sequential-thinking/analyze {
-        input: plan,
-        prompt: "List all assumptions in this plan"
-    }
+    assumptions = CALL sequential-thinking/analyze \
+        input=todos \
+        prompt="List all assumptions - explicit and implicit"
     
-    # 2. CHALLENGE EACH
+    # 2. CHALLENGE EACH ASSUMPTION
     challenges = []
     FOR assumption IN assumptions:
-        counter = CALL sequential-thinking/analyze {
-            input: assumption,
-            prompt: "Generate strongest counter-argument"
-        }
-        challenges.append({
-            assumption: assumption,
-            counter: counter
-        })
-    
-    # 3. REALITY TEST
-    FOR challenge IN challenges:
-        test_cmd = generate_test_command(challenge.assumption)
-        result = EXECUTE(test_cmd)
+        # Generate counter-argument
+        counter = CALL sequential-thinking/challenge \
+            input=assumption \
+            prompt="What could go wrong? What's the opposite view?"
         
-        IF result.exit_code == 0:
-            challenge.reality_status = "VERIFIED"
-        ELSE:
-            challenge.reality_status = "REFUTED"
-            challenge.actual = result.stdout
+        # Reality test
+        test_command = generate_verification_command(assumption)
+        test_result = CALL MPC-Gateway:remote_exec \
+            command=test_command \
+            node="cabin-pc"
+        
+        challenge = {
+            "assumption": assumption.text,
+            "counter_argument": counter.text,
+            "verification_command": test_command,
+            "verification_result": test_result.stdout,
+            "verified": test_result.exit_code == 0
+        }
+        challenges.append(challenge)
+    
+    # 3. CREATE CONFLICT
+    conflict = {
+        "id": f"C-{TIMESTAMP_COMPACT()}",
+        "type": "plan_disagreement",
+        "parties": ["Planner", "Disruptor"],
+        "positions": challenges
+    }
     
     # 4. THIRD-PARTY VALIDATION (BLOCKING)
-    prompt = f"""
+    third_party_prompt = f"""
     SCOPE: Validate assumptions for plan
     
     ASSUMPTIONS AND CHALLENGES:
-    {JSON(challenges)}
+    {json.dumps(challenges, indent=2)}
     
-    TASK: Return APPROVED if assumptions are valid, REJECTED with specifics.
+    TASK: Review each assumption and its challenge.
+    Return APPROVED if assumptions are valid and well-tested.
+    Return REJECTED with specific issues if problems found.
+    
+    FORMAT:
+    - Status: APPROVED or REJECTED
+    - Issues: [list if rejected]
+    - Recommendations: [optional improvements]
     """
     
-    response = CALL openai-chat/complete {
-        model: "gpt-5.2",
-        prompt: prompt
+    third_party_response = CALL openai-chat/complete \
+        model=THIRD_PARTY_MODEL \
+        prompt=third_party_prompt
+    
+    # Parse response
+    approved = "APPROVED" IN third_party_response.text
+    
+    IF NOT approved:
+        # BLOCKING - cannot proceed without third-party approval
+        PRINT "⛔ THIRD-PARTY REJECTED - Cannot proceed"
+        conflict["resolution"] = {
+            "decided_by": THIRD_PARTY_MODEL,
+            "decision": "REJECTED",
+            "rationale": third_party_response.text,
+            "timestamp": TIMESTAMP()
+        }
+        RETURN DisruptResult(status="REJECTED", conflict=conflict)
+    
+    # 5. RESOLVE CONFLICT
+    conflict["resolution"] = {
+        "decided_by": THIRD_PARTY_MODEL,
+        "decision": "APPROVED",
+        "rationale": third_party_response.text,
+        "timestamp": TIMESTAMP()
+    }
+    conflict["acknowledged"] = ["Planner", "Disruptor", THIRD_PARTY_MODEL]
+    
+    # 6. CREATE EVIDENCE
+    evidence = {
+        "id": f"E-DISRUPT-{session}-001",
+        "type": "api_response",
+        "claim": f"Assumptions validated by {THIRD_PARTY_MODEL}",
+        "location": ".workflow/disrupt/gpt52_validation.json",
+        "timestamp": TIMESTAMP(),
+        "verified": True,
+        "verified_by": "third-party"
     }
     
-    WRITE ".workflow/logs/gpt52_disrupt.json" content=response
+    WRITE ".workflow/disrupt/conflict.json" conflict
+    WRITE ".workflow/disrupt/gpt52_validation.json" third_party_response
     
-    IF "APPROVED" NOT IN response:
-        RETURN {status: "FAIL", feedback: response}
-    
-    # 5. OUTPUT
-    debate = {
-        timestamp: TIMESTAMP(),
-        assumptions: assumptions,
-        challenges: challenges,
-        third_party_status: "APPROVED"
-    }
-    
-    WRITE ".workflow/docs/DISRUPT/debate.json" content=JSON(debate)
-    
-    RETURN {status: "PASS", output: debate}
+    RETURN DisruptResult(status="APPROVED", conflict=conflict, evidence=evidence)
 ```
 
 ---
@@ -103,55 +174,108 @@ PROCEDURE disrupt(plan, todos):
 ## Output Template
 
 ```
-==============================================================================
-DISRUPT COMPLETE
-==============================================================================
+================================================================================
+DISRUPT OUTPUT
+================================================================================
 
-**Model:** Opus 4.5
-**Agents:** [Disruptor, Third-party]
+## 1. Assumptions Extracted ({count})
+| # | Assumption | Source |
+|---|------------|--------|
+| 1 | {assumption} | {todo_id} |
 
-**Assumptions Tested:** {count}
-| # | Assumption | Counter | Reality Status |
-|---|------------|---------|----------------|
+## 2. Challenges
+| # | Assumption | Counter-Argument | Verified |
+|---|------------|------------------|----------|
+| 1 | {assumption} | {counter} | ✅/❌ |
 
-**Third-Party Review:**
-- Reviewer: GPT-5.2
-- Status: APPROVED
-- Feedback: {feedback}
+## 3. Verification Tests
+| # | Command | Result | Exit Code |
+|---|---------|--------|-----------|
+| 1 | {command} | {output} | {code} |
 
-**Evidence Location:** .workflow/docs/DISRUPT/debate.json
+## 4. Third-Party Review (GPT-5.2)
+| Field | Value |
+|-------|-------|
+| Model | gpt-5.2 |
+| Status | {APPROVED/REJECTED} |
+| Issues | {list} |
+| Recommendations | {list} |
 
-**Next Stage:** IMPLEMENT
-==============================================================================
+## 5. Conflict Resolution
+| Field | Value |
+|-------|-------|
+| ID | C-{timestamp} |
+| Decided By | gpt-5.2 |
+| Decision | {APPROVED/REJECTED} |
+
+## 6. Evidence
+| id | type | claim | verified_by |
+|----|------|-------|-------------|
+| E-DISRUPT-{session}-001 | api_response | {claim} | third-party |
+
+================================================================================
+RESULT: {APPROVED | REJECTED}
+================================================================================
 ```
 
 ---
 
 ## Handoff
 
-```json
-{
-  "handoff": {
+On APPROVED:
+```python
+handoff = {
     "from_agent": "Disruptor",
     "to_agent": "Executor",
+    "timestamp": TIMESTAMP(),
     "context": {
-      "current_stage": "IMPLEMENT",
-      "assumptions_verified": true,
-      "third_party_approved": true
-    }
-  }
+        "current_stage": "IMPLEMENT",
+        "completed_stages": ["PLAN", "REVIEW", "DISRUPT"],
+        "todos_remaining": todos,
+        "evidence_collected": [evidence],
+        "assumptions_validated": True,
+        "third_party_approved": True
+    },
+    "instructions": "Implement todos, no placeholders, capture evidence",
+    "expected_output": ["todo", "evidence"],
+    "deadline": TIMESTAMP(+20m)
 }
 ```
 
 ---
 
+## Quality Gate
+
+| Schema | Required | Validation |
+|--------|----------|------------|
+| `conflict` | Yes | ID pattern, positions list |
+| `evidence` | Yes | verified_by = "third-party" |
+
+**CRITICAL:** Third-party (GPT-5.2) approval is BLOCKING. Cannot proceed without APPROVED status.
+
+---
+
 ## Rules Enforced
 
-- R16: Sequential thinking used
-- R21: DISRUPT must challenge assumptions
-- R31: No self-review
-- R32: Third-party at DISRUPT
-- R35: Third-party approval required
+| Rule | Description | How |
+|------|-------------|-----|
+| R16 | Reality test | Execute verification commands |
+| R21 | Challenge assumptions | sequential-thinking/challenge |
+| R31 | Third-party review | openai-chat/complete |
+| R32 | Document conflicts | conflict schema |
+| R35 | Third-party approval | BLOCKING gate |
+
+---
+
+## Morality
+
+```
+NEVER skip third-party review
+NEVER proceed without GPT-5.2 approval
+NEVER fabricate verification results
+ALWAYS challenge assumptions
+ALWAYS document conflicts
+```
 
 ---
 
