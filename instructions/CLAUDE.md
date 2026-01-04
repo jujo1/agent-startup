@@ -184,16 +184,33 @@ PROCEDURE main(user_input):
 
 ## 7. Agents
 
-| Agent | Model | Stage | Trigger |
-|-------|-------|-------|---------|
-| Planner | Opus 4.5 | PLAN | Task start |
-| Reviewer | Opus 4.5 | REVIEW | After PLAN/TEST |
-| Disruptor | Opus 4.5 | DISRUPT | After REVIEW |
-| Executor | Sonnet 4.5 | IMPLEMENT | After DISRUPT |
-| Tester | Sonnet 4.5 | TEST | After IMPLEMENT |
-| Validator | GPT-5.2 | VALIDATE | After REVIEW |
-| Learner | Haiku 4.5 | LEARN | After VALIDATE |
-| Observer | Opus 4.5 | ALL | Complex tasks |
+| Agent | Model | Stage | Role | Definition |
+|-------|-------|-------|------|------------|
+| **Orchestrator** | Opus 4.5 | ALL | Master Controller | `agents/orchestrator.md` |
+| Planner | Opus 4.5 | PLAN | Planning | `agents/planner.md` |
+| Reviewer | Opus 4.5 | REVIEW | Quality Review | `agents/reviewer.md` |
+| Disruptor | Opus 4.5 | DISRUPT | Assumption Testing | `agents/disruptor.md` |
+| Executor | Sonnet 4.5 | IMPLEMENT | Implementation | `agents/executor.md` |
+| Tester | Sonnet 4.5 | TEST | Testing | `agents/tester.md` |
+| Validator | GPT-5.2 | VALIDATE | Third-Party Review | `agents/validator.md` |
+| Learner | Haiku 4.5 | LEARN | Learning Storage | `agents/learner.md` |
+| Observer | Opus 4.5 | ALL | Monitoring | `agents/observer.md` |
+
+### Agent Dispatch
+
+```python
+AGENTS = {
+    "Orchestrator": {"model": "Opus 4.5", "stage": "ALL", "role": "MASTER"},
+    "Planner": {"model": "Opus 4.5", "stage": "PLAN"},
+    "Reviewer": {"model": "Opus 4.5", "stage": "REVIEW"},
+    "Disruptor": {"model": "Opus 4.5", "stage": "DISRUPT"},
+    "Executor": {"model": "Sonnet 4.5", "stage": "IMPLEMENT"},
+    "Tester": {"model": "Sonnet 4.5", "stage": "TEST"},
+    "Validator": {"model": "GPT-5.2", "stage": "VALIDATE", "external": True},
+    "Learner": {"model": "Haiku 4.5", "stage": "LEARN"},
+    "Observer": {"model": "Opus 4.5", "stage": "ALL", "background": True}
+}
+```
 
 ---
 
