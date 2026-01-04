@@ -7,30 +7,56 @@
 ## 📋 Template (Copy Everything Below)
 
 ```
-Hi Claude! I want to use AGENTS 4.0 from the web interface. Please help me connect to my infrastructure and set up the workflow system.
+Hi Claude! I need to set up AGENTS 4.0 from the web interface using the 3 required steps:
 
-CONNECTION DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1: CLONE STARTUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Repository: https://github.com/jujo1/agent-startup
+
+Please confirm you can access these key files:
+- AGENTS_3.md (workflow specification)
+- CLAUDE_2.md (infrastructure details)
+- SCHEMAS.md (data structures)
+- WEB_AGENTS_SETUP.md (web agent guide)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2: ESTABLISH FUNNEL CONNECTION TO CABIN-PC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TAILSCALE FUNNEL CONNECTION:
 - Gateway URL: https://cabin-pc.tail1a496.ts.net
 - MCP Endpoint: https://cabin-pc.tail1a496.ts.net/sse
 - Auth Token: D8V6nXegr2P1fd9PfLHNiVbLBCyG1N6jR0vTfI18b_k
-- Repository: https://github.com/jujo1/agent-startup
+- Network: Tailscale (tail1a496.ts.net)
+- Target Node: cabin-pc (100.121.56.65)
 
-SETUP STEPS:
-1. Test MPC-Gateway connection (use ping tool)
-2. Verify gateway status (use get_status tool)
-3. List available nodes (use list_nodes tool)
-4. Read AGENTS_3.md from ~/.claude/ on cabin-pc
-5. Verify ~/.workflow/ directory exists
-6. Confirm you understand the workflow specification
+Please establish a secure tunnel to cabin-pc via this funnel connection.
 
-VERIFICATION:
-After setup, please confirm:
-- You can read files from cabin-pc
-- You can execute remote commands
-- You understand the 12-stage workflow (STARTUP → PLAN → ... → LEARN)
-- You're ready to execute workflows via MPC-Gateway
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3: CONNECT MPC-GATEWAY MCP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Once verified, please say "AGENTS 4.0 web setup complete and ready for workflows."
+Please connect to the MPC-Gateway MCP server and test these tools:
+1. ping - Test connectivity
+2. get_status - Check gateway status
+3. list_nodes - Show available nodes (cabin-pc, office-pc, homeassistant)
+4. read_file - Read ~/.claude/AGENTS_3.md from cabin-pc
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VERIFICATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After completing all 3 steps, please confirm:
+✓ Repository access verified (Step 1)
+✓ Funnel connection established (Step 2)
+✓ MPC-Gateway MCP connected (Step 3)
+✓ All tools working (ping, get_status, read_file, remote_exec)
+✓ AGENTS_3.md loaded from cabin-pc
+✓ Ready to execute workflows
+
+Then say: "✅ All 3 steps complete. AGENTS 4.0 ready for workflows."
 ```
 
 ---
