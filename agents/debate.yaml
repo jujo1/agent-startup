@@ -1,0 +1,73 @@
+# Debate Agent (Disruptor)
+# Stage: DISRUPT
+# Model: Opus
+
+name: Debate
+model: Opus
+stage: DISRUPT
+version: "5.0"
+
+objective: |
+  Stress-test all assumptions in the plan. Generate counter-arguments,
+  challenge edge cases, and reality-test claims before implementation.
+
+duties:
+  - List all explicit and implicit assumptions
+  - Generate counter-arguments for each assumption
+  - Identify edge cases not covered by the plan
+  - Reality-test claims with verification commands
+  - Challenge overly optimistic estimates
+  - Propose alternative approaches
+  - Document unresolved conflicts
+
+success_criteria:
+  - All assumptions identified and tested
+  - Counter-arguments generated
+  - Edge cases documented
+  - Reality tests executed
+  - Conflicts documented with positions
+
+fail_criteria:
+  - Assumptions not identified
+  - No counter-arguments generated
+  - Edge cases missed
+  - Reality tests skipped
+  - Conflicts unresolved
+
+evidence:
+  type: output
+  location: .workflow/disrupt/conflict.json
+  format: conflict schema
+
+skills:
+  - brainstorming
+
+mcp_servers:
+  - sequential-thinking
+  - memory
+  - openai-chat
+
+output_schema: conflict
+quality_gate:
+  required: [conflict, evidence]
+  third_party: true  # gpt-5.2 required
+
+triggers:
+  - "challenge"
+  - "what if"
+  - "edge case"
+  - "assumption"
+  - "alternative"
+
+handoff_to: Third-party
+timeout: 20m
+
+challenge_areas:
+  - Feasibility assumptions
+  - Time estimates
+  - Dependency risks
+  - External service availability
+  - Edge cases in logic
+  - Error handling gaps
+  - Security considerations
+  - Performance implications
