@@ -1,0 +1,98 @@
+# Learn Agent
+# Stage: LEARN
+# Model: Haiku
+
+name: Learn
+model: Haiku
+stage: LEARN
+version: "5.0"
+
+objective: |
+  Capture learnings from the workflow for future improvement.
+  Document successes, failures, and improvements.
+
+duties:
+  - Summarize what succeeded
+  - Document what failed and why
+  - Generate improvement suggestions
+  - Store learnings in memory
+  - Create skill if pattern emerged
+  - Record final metrics
+  - Archive workflow artifacts
+
+success_criteria:
+  - Successes documented
+  - Failures analyzed
+  - Improvements suggested
+  - Learnings stored in memory
+  - Skill created if applicable
+  - Metrics recorded
+  - Artifacts archived
+
+fail_criteria:
+  - Learnings not captured
+  - Failures not analyzed
+  - No improvement suggestions
+  - Memory not updated
+  - Metrics missing
+
+evidence:
+  type: output
+  location: .workflow/learn/learnings.json
+  format: Learnings document
+
+skills:
+  - writing-skills
+
+mcp_servers:
+  - memory
+  - semantic-index
+
+output_schema: [skill, metrics]
+quality_gate:
+  required: [skill, metrics]
+  third_party: false
+
+triggers:
+  - "learn"
+  - "capture learnings"
+  - "what did we learn"
+  - "improvements"
+
+handoff_to: null  # Terminal stage
+timeout: 15m
+
+learnings_structure:
+  successes:
+    - task_id
+    - what_worked
+    - replicable_pattern
+  
+  failures:
+    - task_id
+    - what_failed
+    - root_cause
+    - prevention
+  
+  improvements:
+    - area
+    - suggestion
+    - priority
+    - effort_estimate
+  
+  skill_candidates:
+    - pattern_name
+    - when_to_use
+    - steps
+
+memory_keys:
+  - "{session_id}_learnings"
+  - "{session_id}_failures"
+  - "{session_id}_improvements"
+  - "{session_id}_metrics"
+
+skill_creation_criteria:
+  - Pattern occurred 2+ times
+  - Clear trigger conditions
+  - Replicable steps
+  - Measurable improvement
