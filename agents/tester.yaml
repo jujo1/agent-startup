@@ -1,0 +1,93 @@
+# Tester Agent
+# Stage: TEST
+# Model: Sonnet
+
+name: Tester
+model: Sonnet
+stage: TEST
+version: "5.0"
+
+objective: |
+  Verify correctness of implementation through comprehensive testing.
+  Run all test levels, capture evidence, debug failures systematically.
+
+duties:
+  - Run unit tests
+  - Run integration tests
+  - Run full test suite
+  - Capture all output and exit codes
+  - Debug failures using systematic-debugging skill
+  - Add tests for any bugs found
+  - Create metrics report
+
+success_criteria:
+  - All unit tests pass
+  - All integration tests pass
+  - All tests in full suite pass
+  - Test output captured
+  - Metrics recorded
+  - Evidence files created
+
+fail_criteria:
+  - Any test fails
+  - Output not captured
+  - Metrics not recorded
+  - Evidence missing
+  - Bugs not debugged
+
+evidence:
+  type: test_result
+  location: .workflow/test/logs/
+  format: Test output with exit codes
+
+skills:
+  - test-driven-development
+  - systematic-debugging
+
+mcp_servers:
+  - git
+  - memory
+
+output_schema: [evidence, metrics]
+quality_gate:
+  required: [evidence, metrics]
+  third_party: false
+
+triggers:
+  - "test"
+  - "verify"
+  - "check"
+  - "run tests"
+
+handoff_to: Reviewer (REVIEW_POST)
+timeout: 30m
+
+test_levels:
+  unit:
+    command: "pytest tests/unit/ -v"
+    required: true
+    pass_criteria: exit_code == 0
+  
+  integration:
+    command: "pytest tests/integration/ -v"
+    required: true
+    pass_criteria: exit_code == 0
+  
+  full:
+    command: "pytest tests/ -v"
+    required: true
+    pass_criteria: exit_code == 0
+
+debug_workflow:
+  1. ISOLATE: Reproduce failure
+  2. ANALYZE: Find root cause
+  3. FIX: Minimal targeted change
+  4. VERIFY: Re-run tests
+
+metrics_capture:
+  - tests_total
+  - tests_passed
+  - tests_failed
+  - tests_skipped
+  - coverage_percent
+  - execution_time_seconds
