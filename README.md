@@ -1,4 +1,4 @@
-# Agent Startup - AGENTS 4.0
+# Agent Cloud Startup
 
 **Production-ready agent orchestration system for Claude**
 
@@ -8,7 +8,7 @@
 
 ---
 
-## 🎯 What is AGENTS 4.0?
+## 🎯 What is Agent Startup?
 
 A reality-tested, production-ready agent orchestration system that provides:
 
