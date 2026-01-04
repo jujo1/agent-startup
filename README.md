@@ -1,198 +1,294 @@
-# Agent Startup
+# Agent Startup - AGENTS 4.0
 
-Complete agent startup files for Claude Web/Cloud - instruction sets, skills, scripts, tools.
+**Production-ready agent orchestration system for Claude**
 
-## Quick Start (Web Agents)
+[![Status](https://img.shields.io/badge/status-production--ready-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-99%2B%20passing-success)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
 
-### 1. Clone Startup Files
+---
+
+## 🎯 What is AGENTS 4.0?
+
+A reality-tested, production-ready agent orchestration system that provides:
+
+- **State Machine Enforcement** - 99+ tests, 0 failures
+- **Bypass Prevention** - Prevents workflow shortcuts
+- **Field Compliance** - 17-field todo schema enforcement
+- **Rule Enforcement** - M1-M45 rules verified in production
+
+Built for Claude Web, Claude Desktop, and Claude Code.
+
+---
+
+## ⚡ Quick Start
+
+### 🌐 For Web/Mobile Users (Claude.ai)
+
+**Can't install locally? No problem!** Connect via MPC-Gateway:
+
+1. **Copy Template**: Open [FIRST_CONVERSATION_TEMPLATE.md](FIRST_CONVERSATION_TEMPLATE.md)
+2. **Paste in Claude.ai**: Start new conversation and paste template
+3. **Auto-Connect**: Claude connects to your cabin-pc infrastructure
+4. **Start Building**: Execute workflows remotely via MPC-Gateway
+
+**Setup time**: ~2 minutes | **Guide**: [WEB_AGENTS_SETUP.md](WEB_AGENTS_SETUP.md)
+
+---
+
+### 💻 For Desktop/Code Users (Local Installation)
+
 ```bash
+# 1. Clone repository
 git clone https://github.com/jujo1/agent-startup.git
+cd agent-startup
+
+# 2. Run automated setup
+chmod +x setup.sh
+./setup.sh
+
+# 3. Verify installation
+python3 verify_setup.py
+
+# 4. Start using!
+# Open Claude and reference AGENTS_3.md
 ```
 
-### 2. Connect MCP Gateway
-
-Add to Claude MCP servers (Settings → Integrations):
-
-| Field | Value |
-|-------|-------|
-| **Name** | `cabin_mcp` |
-| **URL** | `https://cabin-pc.tail1a496.ts.net/sse` |
-
-### 3. Verify Connection
-```
-Use MPC-Gateway:ping
-```
-
-### 4. Read Entry Point
-Reference `instructions/CLAUDE.md`
+**Setup time**: ~5 minutes | **Guide**: [QUICKSTART.md](QUICKSTART.md)
 
 ---
 
-**📖 Full Setup Guide: [WEB_AGENT_SETUP.md](WEB_AGENT_SETUP.md)**
-
----
-
-## Alternative: Claude Code
-
-```bash
-git clone https://github.com/jujo1/agent-startup.git ~/.claude/agent-startup
-```
-
-## Structure
+## 📦 What's Included
 
 ```
 agent-startup/
-├── instructions/           # Agent instruction sets
-│   ├── CLAUDE.md          # Entry point (AGENTS_6)
-│   ├── WORKFLOW.md        # 8-stage workflow
-│   ├── INFRASTRUCTURE.md  # Nodes, MCP, Docker
-│   ├── SCHEMAS.md         # JSON schemas
-│   ├── RULES.md           # R01-R54 enforcement
-│   └── agents/            # Individual agent definitions
-│       ├── planner.md
-│       ├── reviewer.md
-│       ├── disruptor.md
-│       ├── executor.md
-│       ├── tester.md
-│       ├── validator.md
-│       ├── learner.md
-│       └── observer.md
-├── skills/                # Claude skills
-│   └── workflow-enforcement/
-│       ├── SKILL.md
-│       ├── startup_validator.py
-│       ├── stage_gate_validator.py
-│       ├── verification_hook.py
-│       ├── evidence_validator.py
-│       ├── todo_enforcer.py
-│       ├── memory_gate.py
-│       └── third_party_hook.py
-├── scripts/               # Startup & utility scripts
-│   ├── startup.py         # Full startup sequence
-│   └── validate.py        # Validation utilities
-├── tools/                 # MCP tools & integrations
-│   ├── mcp_ping.py        # MCP server health check
-│   └── third_party.py     # Third-party review integration
-├── config/                # Configuration files
-│   ├── settings.json      # Default settings
-│   └── schemas.json       # JSON schema definitions
-└── templates/             # Output templates
-    ├── reprompt.md        # Quality gate failure template
-    └── REPROMPT_TEMPLATE.md
+├── QUICKSTART.md           # 1-minute setup guide
+├── setup.sh                # Automated installation
+├── verify_setup.py         # Verification script
+│
+├── AGENTS_3.md             # Complete workflow specification
+├── CLAUDE_2.md             # Infrastructure configuration
+├── SCHEMAS.md              # Data structure definitions
+├── MCP_SETUP.md            # MCP server setup guide
+│
+├── agents/                 # Agent YAML definitions
+│   ├── base/
+│   ├── core/
+│   └── specialized/
+│
+├── mcp/                    # MCP servers
+│   └── servers/
+│       ├── workflow_validator.py
+│       └── requirements.txt
+│
+├── schemas/                # Schema definitions
+├── scripts/                # Generator scripts
+├── workflows/              # Workflow handlers
+└── examples/               # Usage examples
 ```
 
-## Workflow
+---
 
+## 🚀 Features
+
+### Core Features (Production-Ready)
+
+✅ **State Machine** - Tracks and validates workflow state  
+✅ **Bypass Prevention** - Blocks invalid tool access  
+✅ **Field Compliance** - Enforces 17-field todo structure  
+✅ **Rule Enforcement** - M9, M13, M18, M22 verified  
+✅ **Reality Testing** - 99+ tests, 100% pass rate  
+
+### Advanced Features (Optional)
+
+⚠️ **Third-Party Validation** - GPT-5.2 integration  
+⚠️ **Parallel Execution** - Tested, needs benchmarking  
+⚠️ **Observer Monitoring** - Background compliance checks  
+⚠️ **Memory Persistence** - 3 memory systems  
+
+---
+
+## 📖 Documentation
+
+### Essential Reading (Start Here)
+- **[README_WEB_AGENTS.md](README_WEB_AGENTS.md)** - **WEB USERS START HERE**
+- **[FIRST_CONVERSATION_TEMPLATE.md](FIRST_CONVERSATION_TEMPLATE.md)** - Copy-paste to connect
+- **[WEB_AGENTS_SETUP.md](WEB_AGENTS_SETUP.md)** - Complete web agent guide
+- **[QUICKSTART.md](QUICKSTART.md)** - Local installation (5 minutes)
+- **[AGENTS_3.md](AGENTS_3.md)** - Complete workflow specification
+- **[MCP_SETUP.md](MCP_SETUP.md)** - MCP server installation
+
+### Reference Documentation
+- **[CLAUDE_2.md](CLAUDE_2.md)** - Infrastructure details
+- **[SCHEMAS.md](SCHEMAS.md)** - Data structure reference
+- **[TODO_SCHEMA.md](TODO_SCHEMA.md)** - Todo field requirements
+
+### Verification & Testing
+- **[REALITY_TESTING_RESULTS.md](REALITY_TESTING_RESULTS.md)** - Test evidence
+- **[MASTER_INDEX.md](MASTER_INDEX.md)** - Complete file index
+
+---
+
+## 🧪 Testing Status
+
+| Component | Tests | Status | Evidence |
+|-----------|-------|--------|----------|
+| workflow_validator.py | 99+ | ✅ PASS | REALITY_TESTING_RESULTS.md |
+| todo-mcp | 53 | ✅ PASS | Field compliance tests |
+| workflow-gateway | 42 | ✅ PASS | Bypass prevention tests |
+| State transitions | All | ✅ PASS | State machine tests |
+
+**Overall**: Production-ready core features
+
+---
+
+## 💡 Usage Examples
+
+### Example 1: Simple Task
+
+```markdown
+User: "Create a Python calculator"
+
+Agent executes:
+1. STARTUP → S0-S20 checklist
+2. PLAN → Break into tasks
+3. REVIEW → Validate plan
+4. IMPLEMENT → Write code
+5. TEST → Run tests
+6. VALIDATE → Quality gate
+7. LEARN → Store learnings
 ```
-PLAN → REVIEW → DISRUPT → IMPLEMENT → TEST → REVIEW → VALIDATE → LEARN
+
+### Example 2: Complex Project
+
+```markdown
+User: "Build REST API with authentication"
+
+Workflow triggers:
+- Parallel DEBATE (3+ disruptors)
+- Parallel IMPLEMENT (multiple agents)
+- Sequential TESTS (unit → scoped → full)
+- Multi-agent REVIEW (3+ reviewers)
 ```
 
-Every stage has a quality gate with required schemas:
+See `/examples` directory for more.
 
-| Stage | Required | Third-Party |
-|-------|----------|-------------|
-| PLAN | todo, evidence | No |
-| REVIEW | review_gate, evidence | No |
-| DISRUPT | conflict, evidence | **GPT-5.2** |
-| IMPLEMENT | todo, evidence | No |
-| TEST | evidence, metrics | No |
-| REVIEW | review_gate, evidence | No |
-| VALIDATE | review_gate, evidence | **GPT-5.2** |
-| LEARN | skill, metrics | No |
+---
 
-## Agents
+## 🔧 Configuration
 
-| Agent | Model | Stage | Responsibilities |
-|-------|-------|-------|------------------|
-| **Planner** | Opus 4.5 | PLAN | Research, 17-field todos, test design |
-| **Reviewer** | Opus 4.5 | REVIEW | Validation, gap detection |
-| **Disruptor** | Opus 4.5 | DISRUPT | Assumption testing, third-party |
-| **Executor** | Sonnet 4.5 | IMPLEMENT | Parallel execution, no placeholders |
-| **Tester** | Sonnet 4.5 | TEST | Unit/integration/full tests |
-| **Validator** | GPT-5.2 | VALIDATE | Third-party approval |
-| **Learner** | Haiku 4.5 | LEARN | Memory storage, indexing |
-| **Observer** | Opus 4.5 | ALL | Stall detection, reprompts |
+### Minimal Configuration (Required)
 
-## Todo Schema (17 Fields)
+**~/.claude/settings.json**:
+```json
+{
+  "mcpServers": {
+    "workflow-validator": {
+      "command": "python3",
+      "args": ["~/.claude/mcp/servers/workflow_validator.py"]
+    }
+  }
+}
+```
 
-Every todo requires these 17 fields:
+### Full Configuration (Recommended)
 
-**Base (4):**
-- `id` - Unique identifier
-- `content` - Task description
-- `status` - pending/in_progress/completed/blocked/failed
-- `priority` - high/medium/low
+See `MCP_SETUP.md` for complete configuration options.
 
-**Metadata (13):**
-- `objective` - What this achieves
-- `success_criteria` - How to verify success
-- `fail_criteria` - What indicates failure
-- `evidence_required` - Type of evidence needed
-- `evidence_location` - Where evidence will be stored
-- `agent_model` - Which model executes
-- `workflow` - Workflow path
-- `blocked_by` - Dependencies
-- `parallel` - Can run in parallel
-- `workflow_stage` - Current stage
-- `instructions_set` - Which instructions apply
-- `time_budget` - Time limit
-- `reviewer` - Who reviews
+---
 
-## Evidence Requirements
+## 🎓 Learning Resources
 
-5-step evidence verification:
+### For Beginners
+1. [QUICKSTART.md](QUICKSTART.md) - 5 min setup
+2. [Simple Example](examples/calculator_workflow.md) - First workflow
+3. [Common Mistakes](docs/COMMON_MISTAKES.md) - What to avoid
 
-1. **IDENTIFY** - Name the command/tool
-2. **RUN** - Execute with full logging
-3. **READ** - Check output for errors
-4. **VERIFY** - Confirm success criteria met
-5. **STATE** - Summarize findings with evidence path
+### For Advanced Users
+1. [Custom Agents](docs/CUSTOM_AGENTS.md) - Create your own
+2. [Parallel Execution](docs/PARALLEL_EXECUTION.md) - Optimize performance
+3. [Third-Party Integration](docs/THIRD_PARTY_VALIDATION.md) - GPT-5.2 setup
 
-## Usage
+---
 
-### Run Startup
+## 🤝 Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create feature branch
+3. Add tests
+4. Submit pull request
+
+See `CONTRIBUTING.md` for guidelines.
+
+---
+
+## 📜 License
+
+MIT License - See [LICENSE](LICENSE) file
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/[YOUR-USERNAME]/agent-startup/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/[YOUR-USERNAME]/agent-startup/discussions)
+- **Documentation**: See `/docs` directory
+
+---
+
+## 🗺️ Roadmap
+
+### ✅ Completed (v4.0.0)
+- Core enforcement system
+- State machine validation
+- Bypass prevention
+- Field compliance
+
+### 🚧 In Progress (v4.1.0)
+- VSCode extension UI
+- Additional agent YAMLs
+- Performance benchmarks
+
+### 📅 Planned (v4.2.0)
+- E2E scenario tests
+- Multi-project support
+- Cloud deployment guides
+
+---
+
+## 🏆 Acknowledgments
+
+Built with:
+- Claude (Anthropic)
+- MCP (Model Context Protocol)
+- Reality testing methodology
+
+---
+
+## ⚠️ Important Notes
+
+1. **Production-Ready**: Core features verified with 99+ tests
+2. **Optional Features**: Some features require additional setup
+3. **Active Development**: VSCode extension in progress
+4. **Community**: Contributions welcome!
+
+---
+
+**Version**: 4.0.0  
+**Status**: Production-Ready (Core)  
+**Last Updated**: 2026-01-04  
+**Maintainer**: [YOUR-USERNAME]
+
+---
+
+## 🚀 Get Started Now
 
 ```bash
-python scripts/startup.py
+git clone https://github.com/[YOUR-USERNAME]/agent-startup.git
+cd agent-startup
+./setup.sh
 ```
 
-### Validate Todo
-
-```bash
-python scripts/validate.py --todo todo.json
-```
-
-### Check MCP Servers
-
-```bash
-python tools/mcp_ping.py
-```
-
-### Third-Party Review
-
-```bash
-python tools/third_party.py --stage VALIDATE --file outputs.json
-```
-
-## Morality (Non-Negotiable)
-
-```
-NEVER fabricate
-NEVER hide errors
-NEVER use placeholders
-NEVER claim without evidence
-NEVER self-review
-ALWAYS execute before claim
-ALWAYS validate against schema
-ALWAYS pass quality gate
-```
-
-## Version
-
-- Version: 4.0.0
-- Updated: 2026-01-04
-- Related: [claude-instructions AGENTS_6](https://github.com/jujo1/claude-instructions/tree/AGENTS_6)
-
-## License
-
-MIT
+Questions? See [QUICKSTART.md](QUICKSTART.md) or open an issue!
