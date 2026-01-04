@@ -1,294 +1,308 @@
-# Agent Startup - AGENTS 4.0
+# Agent Startup
 
-**Production-ready agent orchestration system for Claude**
+**Version:** 5.0  
+**Last Updated:** 2026-01-04  
+**Author:** jujo1
 
-[![Status](https://img.shields.io/badge/status-production--ready-brightgreen)]()
-[![Tests](https://img.shields.io/badge/tests-99%2B%20passing-success)]()
-[![License](https://img.shields.io/badge/license-MIT-blue)]()
-
----
-
-## 🎯 What is AGENTS 4.0?
-
-A reality-tested, production-ready agent orchestration system that provides:
-
-- **State Machine Enforcement** - 99+ tests, 0 failures
-- **Bypass Prevention** - Prevents workflow shortcuts
-- **Field Compliance** - 17-field todo schema enforcement
-- **Rule Enforcement** - M1-M45 rules verified in production
-
-Built for Claude Web, Claude Desktop, and Claude Code.
+A complete Claude agent instruction set with workflow enforcement, schema validation, quality gates, and hooks for maximum compliance and reliability.
 
 ---
 
-## ⚡ Quick Start
-
-### 🌐 For Web/Mobile Users (Claude.ai)
-
-**Can't install locally? No problem!** Connect via MPC-Gateway:
-
-1. **Copy Template**: Open [FIRST_CONVERSATION_TEMPLATE.md](FIRST_CONVERSATION_TEMPLATE.md)
-2. **Paste in Claude.ai**: Start new conversation and paste template
-3. **Auto-Connect**: Claude connects to your cabin-pc infrastructure
-4. **Start Building**: Execute workflows remotely via MPC-Gateway
-
-**Setup time**: ~2 minutes | **Guide**: [WEB_AGENTS_SETUP.md](WEB_AGENTS_SETUP.md)
-
----
-
-### 💻 For Desktop/Code Users (Local Installation)
+## Quick Start
 
 ```bash
-# 1. Clone repository
+# Clone the repository
 git clone https://github.com/jujo1/agent-startup.git
-cd agent-startup
 
-# 2. Run automated setup
-chmod +x setup.sh
-./setup.sh
+# Install to Claude directory
+cp -r agent-startup/* ~/.claude/
 
-# 3. Verify installation
-python3 verify_setup.py
+# Run startup check
+python ~/.claude/hooks/startup_validator.py --check
 
-# 4. Start using!
-# Open Claude and reference AGENTS_3.md
+# Start a new workflow
+python ~/.claude/scripts/workflow_main.py --start --objective "Your objective here"
 ```
-
-**Setup time**: ~5 minutes | **Guide**: [QUICKSTART.md](QUICKSTART.md)
 
 ---
 
-## 📦 What's Included
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         CLAUDE.md                               │
+│                      (Entry Point)                              │
+├─────────────────────────────────────────────────────────────────┤
+│                            │                                    │
+│  ┌────────────┐ ┌─────────┴──────────┐ ┌────────────┐          │
+│  │ AGENTS.md  │ │     SCHEMAS.md     │ │ SKILLS.md  │          │
+│  │ (Workflow) │ │ (9 Schemas)        │ │ (9 Skills) │          │
+│  └─────┬──────┘ └─────────┬──────────┘ └─────┬──────┘          │
+│        │                  │                  │                  │
+│        ▼                  ▼                  ▼                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │                   WORKFLOW ENGINE                         │  │
+│  │  PLAN → REVIEW → DISRUPT → IMPLEMENT → TEST → VALIDATE   │  │
+│  │                    → LEARN                                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                            │                                    │
+│  ┌─────────────────────────┴────────────────────────────────┐  │
+│  │                    HOOKS.md                               │  │
+│  │  startup_validator | reprompt_timer | pre_compaction     │  │
+│  │  skills_loader | stage_gate_validator | output_validator │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Directory Structure
 
 ```
 agent-startup/
-├── QUICKSTART.md           # 1-minute setup guide
-├── setup.sh                # Automated installation
-├── verify_setup.py         # Verification script
-│
-├── AGENTS_3.md             # Complete workflow specification
-├── CLAUDE_2.md             # Infrastructure configuration
-├── SCHEMAS.md              # Data structure definitions
-├── MCP_SETUP.md            # MCP server setup guide
-│
+├── instructions/           # Core instruction documents
+│   ├── CLAUDE.md          # Entry point - infrastructure
+│   ├── AGENTS.md          # Workflow, agents, rules
+│   ├── SCHEMAS.md         # 9 validation schemas
+│   ├── SKILLS.md          # Superpowers skills
+│   └── HOOKS.md           # Hook definitions
 ├── agents/                 # Agent YAML definitions
-│   ├── base/
-│   ├── core/
-│   └── specialized/
-│
-├── mcp/                    # MCP servers
-│   └── servers/
-│       ├── workflow_validator.py
-│       └── requirements.txt
-│
-├── schemas/                # Schema definitions
-├── scripts/                # Generator scripts
-├── workflows/              # Workflow handlers
-└── examples/               # Usage examples
+│   ├── planner.yaml
+│   ├── reviewer.yaml
+│   ├── debate.yaml
+│   ├── third_party.yaml
+│   ├── executor.yaml
+│   ├── observer.yaml
+│   ├── tester.yaml
+│   ├── morality.yaml
+│   ├── learn.yaml
+│   └── research.yaml
+├── hooks/                  # Python hook implementations
+│   ├── startup_validator.py
+│   ├── reprompt_timer.py
+│   ├── pre_compaction_hook.py
+│   ├── skills_loader.py
+│   └── ...
+├── scripts/                # Main workflow scripts
+│   ├── workflow_state_machine.py
+│   └── workflow_main.py
+├── templates/              # Output templates
+│   └── PLAN_OUTPUT_TEMPLATE.md
+├── tests/                  # Test suite
+│   └── test_workflow.py
+└── README.md
 ```
 
 ---
 
-## 🚀 Features
+## 8-Stage Workflow
 
-### Core Features (Production-Ready)
-
-✅ **State Machine** - Tracks and validates workflow state  
-✅ **Bypass Prevention** - Blocks invalid tool access  
-✅ **Field Compliance** - Enforces 17-field todo structure  
-✅ **Rule Enforcement** - M9, M13, M18, M22 verified  
-✅ **Reality Testing** - 99+ tests, 100% pass rate  
-
-### Advanced Features (Optional)
-
-⚠️ **Third-Party Validation** - GPT-5.2 integration  
-⚠️ **Parallel Execution** - Tested, needs benchmarking  
-⚠️ **Observer Monitoring** - Background compliance checks  
-⚠️ **Memory Persistence** - 3 memory systems  
+| Stage | Model | Agents | Quality Gate |
+|-------|-------|--------|--------------|
+| PLAN | Opus | Planner, Research | todo, evidence |
+| REVIEW | Opus | Reviewer | review_gate, evidence |
+| DISRUPT | Opus, gpt-5.2 | Debate, Third-party | conflict, evidence |
+| IMPLEMENT | Sonnet | Executor, Observer | todo, evidence |
+| TEST | Sonnet | Tester | evidence, metrics |
+| REVIEW | Opus | Reviewer | review_gate, evidence |
+| VALIDATE | gpt-5.2, Opus | Third-party, Morality | review_gate, evidence |
+| LEARN | Haiku | Learn | skill, metrics |
 
 ---
 
-## 📖 Documentation
+## 9 Validation Schemas
 
-### Essential Reading (Start Here)
-- **[README_WEB_AGENTS.md](README_WEB_AGENTS.md)** - **WEB USERS START HERE**
-- **[FIRST_CONVERSATION_TEMPLATE.md](FIRST_CONVERSATION_TEMPLATE.md)** - Copy-paste to connect
-- **[WEB_AGENTS_SETUP.md](WEB_AGENTS_SETUP.md)** - Complete web agent guide
-- **[QUICKSTART.md](QUICKSTART.md)** - Local installation (5 minutes)
-- **[AGENTS_3.md](AGENTS_3.md)** - Complete workflow specification
-- **[MCP_SETUP.md](MCP_SETUP.md)** - MCP server installation
-
-### Reference Documentation
-- **[CLAUDE_2.md](CLAUDE_2.md)** - Infrastructure details
-- **[SCHEMAS.md](SCHEMAS.md)** - Data structure reference
-- **[TODO_SCHEMA.md](TODO_SCHEMA.md)** - Todo field requirements
-
-### Verification & Testing
-- **[REALITY_TESTING_RESULTS.md](REALITY_TESTING_RESULTS.md)** - Test evidence
-- **[MASTER_INDEX.md](MASTER_INDEX.md)** - Complete file index
+1. **todo** - 17-field task with metadata
+2. **evidence** - Proof with location and verification
+3. **review_gate** - Stage approval record
+4. **handoff** - Agent-to-agent context transfer
+5. **conflict** - Disagreement documentation
+6. **metrics** - Workflow performance data
+7. **skill** - Learned capability
+8. **startup** - Session initialization
+9. **recovery** - Error recovery state
 
 ---
 
-## 🧪 Testing Status
+## 10 Agents
 
-| Component | Tests | Status | Evidence |
-|-----------|-------|--------|----------|
-| workflow_validator.py | 99+ | ✅ PASS | REALITY_TESTING_RESULTS.md |
-| todo-mcp | 53 | ✅ PASS | Field compliance tests |
-| workflow-gateway | 42 | ✅ PASS | Bypass prevention tests |
-| State transitions | All | ✅ PASS | State machine tests |
-
-**Overall**: Production-ready core features
+| Agent | Model | Stage | Purpose |
+|-------|-------|-------|---------|
+| Planner | Opus | PLAN | Define solution path |
+| Research | Opus | PLAN | Acquire domain knowledge |
+| Reviewer | Opus | REVIEW | Validate quality |
+| Debate | Opus | DISRUPT | Challenge assumptions |
+| Third-party | gpt-5.2 | DISRUPT, VALIDATE | External validation |
+| Executor | Sonnet | IMPLEMENT | Deliver code |
+| Observer | Sonnet | IMPLEMENT | Monitor progress |
+| Tester | Sonnet | TEST | Verify correctness |
+| Morality | Opus | VALIDATE | Ensure integrity |
+| Learn | Haiku | LEARN | Capture learnings |
 
 ---
 
-## 💡 Usage Examples
+## 9 Superpowers Skills
 
-### Example 1: Simple Task
+1. **verification-before-completion** - Evidence before claims
+2. **executing-plans** - Batch execution with verification
+3. **test-driven-development** - RED-GREEN-REFACTOR
+4. **systematic-debugging** - 4-phase root cause
+5. **brainstorming** - Idea refinement
+6. **requesting-code-review** - Structured review requests
+7. **receiving-code-review** - Technical feedback handling
+8. **subagent-driven-development** - Fresh agents per task
+9. **dispatching-parallel-agents** - Parallel coordination
 
-```markdown
-User: "Create a Python calculator"
+---
 
-Agent executes:
-1. STARTUP → S0-S20 checklist
-2. PLAN → Break into tasks
-3. REVIEW → Validate plan
-4. IMPLEMENT → Write code
-5. TEST → Run tests
-6. VALIDATE → Quality gate
-7. LEARN → Store learnings
+## 7 Hooks
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| startup_validator | session_start | Validate startup requirements |
+| reprompt_timer | interval_5m | Periodic quality checks |
+| pre_compaction_hook | pre_compact | Export before context loss |
+| skills_loader | stage_enter | Load skills for stage |
+| stage_gate_validator | stage_exit | Validate stage outputs |
+| evidence_validator | evidence_create | Validate evidence |
+| output_validator | output_create | Validate any output |
+
+---
+
+## 20 Rules
+
+### Evidence (R01-R05)
+- R01: Semantic search before grep
+- R02: Logging present
+- R03: No error hiding
+- R04: Paths tracked
+- R05: Evidence exists
+
+### Code (R06-R10)
+- R06: Types present
+- R07: Absolute paths
+- R08: No placeholders
+- R09: No fabrication
+- R10: Complete code
+
+### Workflow (R11-R15)
+- R11: Parallel for 3+ tasks
+- R12: Memory stored
+- R13: Auto transition
+- R14: Observer for complex
+- R15: Workflow followed
+
+### Validation (R16-R20)
+- R16: Checklist complete
+- R17: Reprompt timer active
+- R18: Review gate passed
+- R19: Quality 100%
+- R20: Third-party approved
+
+---
+
+## Morality
+
+```
+NEVER fabricate.
+NEVER hide errors.
+NEVER use placeholders.
+NEVER skip validation.
+NEVER claim without evidence.
+ALWAYS execute before claim.
+ALWAYS validate against schema.
+ALWAYS pass quality gate.
+ALWAYS follow workflow stages.
+ALWAYS store evidence.
 ```
 
-### Example 2: Complex Project
+---
 
-```markdown
-User: "Build REST API with authentication"
+## Usage Examples
 
-Workflow triggers:
-- Parallel DEBATE (3+ disruptors)
-- Parallel IMPLEMENT (multiple agents)
-- Sequential TESTS (unit → scoped → full)
-- Multi-agent REVIEW (3+ reviewers)
+### Start New Workflow
+```bash
+python scripts/workflow_main.py --start --objective "Build authentication system"
 ```
 
-See `/examples` directory for more.
-
----
-
-## 🔧 Configuration
-
-### Minimal Configuration (Required)
-
-**~/.claude/settings.json**:
-```json
-{
-  "mcpServers": {
-    "workflow-validator": {
-      "command": "python3",
-      "args": ["~/.claude/mcp/servers/workflow_validator.py"]
-    }
-  }
-}
+### Check Quality Gate
+```bash
+python hooks/reprompt_timer.py --check
 ```
 
-### Full Configuration (Recommended)
+### Load Skills for Stage
+```bash
+python hooks/skills_loader.py --stage IMPLEMENT
+```
 
-See `MCP_SETUP.md` for complete configuration options.
+### Run Tests
+```bash
+python tests/test_workflow.py -v
+```
 
----
-
-## 🎓 Learning Resources
-
-### For Beginners
-1. [QUICKSTART.md](QUICKSTART.md) - 5 min setup
-2. [Simple Example](examples/calculator_workflow.md) - First workflow
-3. [Common Mistakes](docs/COMMON_MISTAKES.md) - What to avoid
-
-### For Advanced Users
-1. [Custom Agents](docs/CUSTOM_AGENTS.md) - Create your own
-2. [Parallel Execution](docs/PARALLEL_EXECUTION.md) - Optimize performance
-3. [Third-Party Integration](docs/THIRD_PARTY_VALIDATION.md) - GPT-5.2 setup
+### Export Before Compaction
+```bash
+python hooks/pre_compaction_hook.py --export --force
+```
 
 ---
 
-## 🤝 Contributing
+## Installation
 
-Contributions welcome! Please:
+### For Claude Web/Cloud
 
-1. Fork the repository
-2. Create feature branch
-3. Add tests
-4. Submit pull request
+1. Download this repository
+2. Create a Claude Project
+3. Upload instruction files to Project Knowledge
+4. Reference CLAUDE.md as the entry point
 
-See `CONTRIBUTING.md` for guidelines.
-
----
-
-## 📜 License
-
-MIT License - See [LICENSE](LICENSE) file
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/[YOUR-USERNAME]/agent-startup/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/[YOUR-USERNAME]/agent-startup/discussions)
-- **Documentation**: See `/docs` directory
-
----
-
-## 🗺️ Roadmap
-
-### ✅ Completed (v4.0.0)
-- Core enforcement system
-- State machine validation
-- Bypass prevention
-- Field compliance
-
-### 🚧 In Progress (v4.1.0)
-- VSCode extension UI
-- Additional agent YAMLs
-- Performance benchmarks
-
-### 📅 Planned (v4.2.0)
-- E2E scenario tests
-- Multi-project support
-- Cloud deployment guides
-
----
-
-## 🏆 Acknowledgments
-
-Built with:
-- Claude (Anthropic)
-- MCP (Model Context Protocol)
-- Reality testing methodology
-
----
-
-## ⚠️ Important Notes
-
-1. **Production-Ready**: Core features verified with 99+ tests
-2. **Optional Features**: Some features require additional setup
-3. **Active Development**: VSCode extension in progress
-4. **Community**: Contributions welcome!
-
----
-
-**Version**: 4.0.0  
-**Status**: Production-Ready (Core)  
-**Last Updated**: 2026-01-04  
-**Maintainer**: [YOUR-USERNAME]
-
----
-
-## 🚀 Get Started Now
+### For Claude Code
 
 ```bash
-git clone https://github.com/[YOUR-USERNAME]/agent-startup.git
-cd agent-startup
-./setup.sh
+# Clone to Claude directory
+git clone https://github.com/jujo1/agent-startup.git ~/.claude/agent-startup
+
+# Symlink instructions
+ln -s ~/.claude/agent-startup/instructions/CLAUDE.md ~/.claude/CLAUDE.md
+
+# Add to settings
+echo '{"instructionsPath": "~/.claude/CLAUDE.md"}' > ~/.claude/settings.json
 ```
 
-Questions? See [QUICKSTART.md](QUICKSTART.md) or open an issue!
+---
+
+## Testing
+
+```bash
+# Run all tests
+cd agent-startup
+python tests/test_workflow.py
+
+# Expected: 22 tests, all passing
+```
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 5.0 | 2026-01-04 | Complete rewrite with state machine |
+| 4.0 | 2026-01-03 | AGENTS_3 procedural format |
+| 3.5 | 2026-01-02 | Personalization v3.5 |
+| 3.0 | 2026-01-01 | Agent personas v1.0 |
+| 2.0 | 2025-12-30 | Mandatory rules v1.2 |
+| 1.0 | 2025-12-28 | Initial version |
+
+---
+
+## License
+
+MIT License - See LICENSE file
+
+---
+
+## Related Repositories
+
+- [claude-instructions](https://github.com/jujo1/claude-instructions) - Full instruction set history
+- [superpowers](https://github.com/obra/superpowers) - Skills source
