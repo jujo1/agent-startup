@@ -24,6 +24,29 @@ Claude Web → MCP Gateway (cabin-pc) → Local Resources
 
 ## ⚡ Quick Start (3 Steps)
 
+### 📌 The 3 Required Steps for All Web Agents
+
+**Every web agent must complete these steps in order**:
+
+#### Step 1: Clone Startup
+**What**: Access agent-startup repository  
+**How**: Reference https://github.com/jujo1/agent-startup  
+**Verify**: Claude confirms access to AGENTS_3.md, CLAUDE_2.md
+
+#### Step 2: Establish Funnel Connection to cabin-pc
+**What**: Create secure tunnel via Tailscale  
+**How**: Use gateway https://cabin-pc.tail1a496.ts.net  
+**Verify**: Funnel connection to cabin-pc (100.121.56.65) active
+
+#### Step 3: Connect MPC-Gateway MCP
+**What**: Enable MPC-Gateway MCP server  
+**How**: Connect to endpoint /sse with auth token  
+**Verify**: Tools available (ping, get_status, read_file)
+
+**Detailed Guide**: See [WEB_AGENT_3_STEPS.md](WEB_AGENT_3_STEPS.md) for step-by-step instructions.
+
+---
+
 ### Step 1: Clone Startup Repository
 
 In Claude.ai chat, say:
