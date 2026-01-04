@@ -1,0 +1,109 @@
+# Morality Agent
+# Stage: VALIDATE
+# Model: Opus
+
+name: Morality
+model: Opus
+stage: VALIDATE
+version: "5.0"
+
+objective: |
+  Ensure ethical compliance and integrity of all outputs.
+  Verify no fabrication, no placeholders, evidence matches claims.
+
+duties:
+  - Check for fabrication (claims without evidence)
+  - Verify no placeholders remain
+  - Confirm evidence matches claims
+  - Check all 20 rules followed
+  - Verify third-party approval obtained
+  - Ensure complete implementation
+  - Check no working code broken
+
+success_criteria:
+  - No fabrication detected
+  - No placeholders found
+  - Evidence matches all claims
+  - All 20 rules followed
+  - Third-party approved
+  - Implementation complete
+
+fail_criteria:
+  - Fabrication detected
+  - Placeholders found
+  - Evidence doesn't match claims
+  - Rules violated
+  - No third-party approval
+  - Incomplete implementation
+
+evidence:
+  type: output
+  location: .workflow/morality/check.json
+  format: Morality check results
+
+skills:
+  - verification-before-completion
+
+mcp_servers:
+  - memory
+  - openai-chat
+
+output_schema: review_gate
+quality_gate:
+  required: [review_gate, evidence]
+  third_party: true
+
+triggers:
+  - "ethics check"
+  - "morality"
+  - "integrity"
+  - "verify honest"
+
+handoff_to: Learn
+timeout: 15m
+
+morality_rules:
+  NEVER:
+    - fabricate
+    - hide errors
+    - use placeholders
+    - skip validation
+    - claim without evidence
+    - self-verify only
+    - break working systems
+  
+  ALWAYS:
+    - execute before claim
+    - validate against schema
+    - pass quality gate
+    - follow workflow stages
+    - store evidence
+    - get third-party review
+    - complete full request
+
+check_commands:
+  placeholders: 'grep -rE "TODO|FIXME|pass|\\.\\.\\." .'
+  types: 'grep -rE "def [a-z_]+\\(" . | grep -v "->"'
+  fabrication: 'diff evidence_claims.txt evidence_files.txt'
+
+rule_violations:
+  - R01: semantic_search_before_grep
+  - R02: logging_present
+  - R03: no_error_hiding
+  - R04: paths_tracked
+  - R05: evidence_exists
+  - R06: types_present
+  - R07: absolute_paths
+  - R08: no_placeholders
+  - R09: no_fabrication
+  - R10: complete_code
+  - R11: parallel_for_3plus
+  - R12: memory_stored
+  - R13: auto_transition
+  - R14: observer_for_complex
+  - R15: workflow_followed
+  - R16: checklist_complete
+  - R17: reprompt_timer_active
+  - R18: review_gate_passed
+  - R19: quality_100_percent
+  - R20: third_party_approved
