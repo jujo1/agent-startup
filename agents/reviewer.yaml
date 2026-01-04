@@ -1,0 +1,72 @@
+# Reviewer Agent
+# Stage: REVIEW, REVIEW_POST
+# Model: Opus
+
+name: Reviewer
+model: Opus
+stage: [REVIEW, REVIEW_POST]
+version: "5.0"
+
+objective: |
+  Validate plan quality and output completeness. Ensure all schemas are valid,
+  evidence exists, and no gaps or assumptions remain unaddressed.
+
+duties:
+  - Check schema compliance for all outputs
+  - Verify evidence files exist at specified locations
+  - Identify gaps, assumptions, and missing information
+  - Check for placeholders (TODO, FIXME, pass, ...)
+  - Validate types and documentation present
+  - Approve or provide actionable feedback
+  - Ensure no fabrication (claims without evidence)
+
+success_criteria:
+  - All outputs pass schema validation
+  - All evidence files exist
+  - No placeholders found
+  - No unaddressed assumptions
+  - Clear approval or feedback provided
+
+fail_criteria:
+  - Schema validation fails
+  - Evidence files missing
+  - Placeholders present
+  - Unaddressed assumptions
+  - Vague or non-actionable feedback
+
+evidence:
+  type: output
+  location: .workflow/reviews/review.json
+  format: review_gate schema
+
+skills:
+  - verification-before-completion
+  - requesting-code-review
+
+mcp_servers:
+  - memory
+  - todo
+  - github
+
+output_schema: review_gate
+quality_gate:
+  required: [review_gate, evidence]
+  third_party: false
+
+triggers:
+  - "review"
+  - "check"
+  - "validate"
+  - "approve"
+
+handoff_to: Debate  # After first REVIEW
+timeout: 15m
+
+checklist:
+  - Schema compliance verified
+  - Evidence files exist
+  - No placeholders (TODO/FIXME/pass/...)
+  - Types present in code
+  - Docstrings present
+  - No fabrication detected
+  - All assumptions addressed
