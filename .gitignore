@@ -1,0 +1,39 @@
+# Credentials
+credentials.json
+*.key
+*.pem
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporary
+*.tmp
+*.temp
+.workflow/
+
+# MCP Gateway
+gateway.pid
