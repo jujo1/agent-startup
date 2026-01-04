@@ -1,178 +1,180 @@
 # SCHEMAS.md
 
-**Version:** 4.0.0  
-**Modified:** 2026-01-04T07:30:00Z  
-**References:** `CLAUDE.md`, `WORKFLOW.md`
-
----
-
-## Validation
-
-```python
-PROCEDURE validate(data, schema_name):
-    schema = SCHEMAS[schema_name]
-    errors = []
-    
-    # Check required fields
-    FOR field IN schema.required:
-        IF field NOT IN data:
-            errors.append(f"Missing required field: {field}")
-    
-    # Check enums
-    FOR field, allowed IN schema.enums.items():
-        IF field IN data AND data[field] NOT IN allowed:
-            errors.append(f"Invalid value for {field}: {data[field]}")
-    
-    # Check patterns
-    FOR field, pattern IN schema.patterns.items():
-        IF field IN data AND NOT regex_match(pattern, data[field]):
-            errors.append(f"Invalid format for {field}: {data[field]}")
-    
-    RETURN {valid: len(errors) == 0, errors: errors}
+```yaml
+VERSION: 5.0
+MODIFIED: 2026-01-04T07:00:00Z
+VALIDATOR: hooks/output_validator.py
+SCHEMAS: [todo, evidence, review_gate, handoff, conflict, metrics, skill, startup, recovery]
 ```
 
 ---
 
-## 1. Todo Schema (17 Fields)
+## 0. VALIDATION FUNCTION
 
 ```python
-TODO_SCHEMA = {
-    name: "todo",
-    required: [
-        "id", "content", "status", "priority",
-        "metadata.objective",
-        "metadata.success_criteria",
-        "metadata.fail_criteria",
-        "metadata.evidence_required",
-        "metadata.evidence_location",
-        "metadata.agent_model",
-        "metadata.workflow",
-        "metadata.blocked_by",
-        "metadata.parallel",
-        "metadata.workflow_stage",
-        "metadata.instructions_set",
-        "metadata.time_budget",
-        "metadata.reviewer"
+def validate(data: dict, schema_name: str) -> tuple[bool, list[str]]:
+    """Validate data against schema. Returns (valid, errors)."""
+    
+    IF schema_name NOT IN SCHEMAS:
+        RETURN (False, [f"Unknown schema: {schema_name}"])
+    
+    schema = SCHEMAS[schema_name]
+    errors = []
+    
+    # Unwrap nested (e.g., {"evidence": {...}} -> {...})
+    IF schema_name IN data AND isinstance(data[schema_name], dict):
+        data = data[schema_name]
+    
+    # Required fields
+    FOR field IN schema.get("required", []):
+        IF field NOT IN data OR data[field] IN [None, ""]:
+            errors.append(f"Missing required: {field}")
+    
+    # Nested required (metadata, context)
+    FOR nested IN ["metadata", "context"]:
+        IF f"{nested}_required" IN schema:
+            FOR field IN schema[f"{nested}_required"]:
+                IF field NOT IN data.get(nested, {}):
+                    errors.append(f"Missing: {nested}.{field}")
+    
+    # Enum validation
+    FOR field, allowed IN schema.get("enums", {}).items():
+        val = data.get(field) OR data.get("metadata", {}).get(field)
+        IF val AND val NOT IN allowed:
+            errors.append(f"{field}: '{val}' not in {allowed}")
+    
+    # Pattern validation
+    FOR field, pattern IN schema.get("patterns", {}).items():
+        IF field IN data AND data[field]:
+            IF NOT re.match(pattern, str(data[field])):
+                errors.append(f"{field}: pattern mismatch (expected {pattern})")
+    
+    # Type validation
+    FOR field, expected IN schema.get("types", {}).items():
+        val = data.get(field) OR data.get("metadata", {}).get(field)
+        IF val IS NOT None AND NOT isinstance(val, expected):
+            errors.append(f"{field}: expected {expected.__name__}, got {type(val).__name__}")
+    
+    RETURN (len(errors) == 0, errors)
+
+
+def detect_schema(data: dict) -> str | None:
+    """Auto-detect schema type from data structure."""
+    IF "evidence" IN data: RETURN "evidence"
+    IF "handoff" IN data: RETURN "handoff"
+    IF "review_gate" IN data: RETURN "review_gate"
+    IF "conflict" IN data: RETURN "conflict"
+    IF "metrics" IN data: RETURN "metrics"
+    IF "skill" IN data: RETURN "skill"
+    IF "startup" IN data: RETURN "startup"
+    IF "recovery" IN data: RETURN "recovery"
+    IF "metadata" IN data AND "objective" IN data.get("metadata", {}):
+        RETURN "todo"
+    RETURN None
+```
+
+---
+
+## 1. TODO (17 fields)
+
+```python
+SCHEMAS["todo"] = {
+    "required": ["id", "content", "status", "priority", "metadata"],
+    
+    "metadata_required": [
+        "objective",           # What this achieves
+        "success_criteria",    # How to verify success
+        "fail_criteria",       # What indicates failure
+        "evidence_required",   # Type of evidence needed
+        "evidence_location",   # Absolute path to evidence file
+        "agent_model",         # Claude, GPT, Ollama
+        "workflow",            # Stage sequence
+        "blocked_by",          # Dependencies (list of todo IDs)
+        "parallel",            # Can run in parallel (bool)
+        "workflow_stage",      # Current stage
+        "instructions_set",    # AGENTS.md
+        "time_budget",         # Max time allowed
+        "reviewer"             # Who reviews (gpt-5.2)
     ],
-    enums: {
+    
+    "enums": {
         "status": ["pending", "in_progress", "completed", "blocked", "failed"],
         "priority": ["high", "medium", "low"],
-        "metadata.evidence_required": ["log", "output", "test_result", "diff", "screenshot", "api_response"],
-        "metadata.agent_model": ["Claude", "GPT", "Ollama"],
-        "metadata.workflow_stage": ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "VALIDATE", "LEARN"]
+        "evidence_required": ["log", "output", "test_result", "diff", "screenshot", "api_response"],
+        "workflow_stage": ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "VALIDATE", "LEARN"],
+        "agent_model": ["Claude", "GPT", "Ollama"]
     },
-    patterns: {
-        "metadata.evidence_location": "^(/|\\./|~/)",  # Must be path
-        "metadata.time_budget": "^≤?\\d+m$"  # e.g., ≤15m
-    },
-    validators: {
-        "metadata.blocked_by": lambda x: isinstance(x, list),
-        "metadata.parallel": lambda x: isinstance(x, bool)
+    
+    "types": {
+        "blocked_by": list,
+        "parallel": bool
     }
 }
 ```
 
-**JSON:**
-```json
-{
-  "id": "string",
-  "content": "string",
-  "status": "pending|in_progress|completed|blocked|failed",
-  "priority": "high|medium|low",
-  "metadata": {
-    "objective": "string",
-    "success_criteria": "string",
-    "fail_criteria": "string",
-    "evidence_required": "log|output|test_result|diff|screenshot|api_response",
-    "evidence_location": "absolute_path",
-    "agent_model": "Claude|GPT|Ollama",
-    "workflow": "string",
-    "blocked_by": ["task_id"],
-    "parallel": boolean,
-    "workflow_stage": "PLAN|REVIEW|DISRUPT|IMPLEMENT|TEST|VALIDATE|LEARN",
-    "instructions_set": "string",
-    "time_budget": "≤60m",
-    "reviewer": "string"
-  }
-}
-```
+### Example
 
-**Example:**
 ```json
 {
   "id": "1.1",
-  "content": "Create virtual environment",
+  "content": "Create workflow state machine",
   "status": "pending",
   "priority": "high",
   "metadata": {
-    "objective": "Python isolation",
-    "success_criteria": "venv activates successfully",
-    "fail_criteria": "Activation fails or import errors",
+    "objective": "Implement 8-stage workflow enforcement",
+    "success_criteria": "All stages execute with quality gates",
+    "fail_criteria": "Any stage fails validation",
     "evidence_required": "log",
-    "evidence_location": "./logs/stage1_venv.log",
+    "evidence_location": "/home/user/.workflow/evidence/1.1.log",
     "agent_model": "Claude",
     "workflow": "PLAN→REVIEW→DISRUPT→IMPLEMENT→TEST→REVIEW→VALIDATE→LEARN",
     "blocked_by": [],
     "parallel": false,
-    "workflow_stage": "IMPLEMENT",
-    "instructions_set": "CLAUDE.md",
-    "time_budget": "≤15m",
-    "reviewer": "Infra"
+    "workflow_stage": "PLAN",
+    "instructions_set": "AGENTS.md",
+    "time_budget": "≤60m",
+    "reviewer": "gpt-5.2"
   }
 }
 ```
 
 ---
 
-## 2. Evidence Schema
+## 2. EVIDENCE
 
 ```python
-EVIDENCE_SCHEMA = {
-    name: "evidence",
-    required: [
-        "id", "type", "claim", "location",
-        "timestamp", "hash", "verified"
-    ],
-    enums: {
+SCHEMAS["evidence"] = {
+    "required": ["id", "type", "claim", "location", "timestamp", "verified", "verified_by"],
+    
+    "optional": ["hash", "verification_method"],
+    
+    "patterns": {
+        "id": r"^E-[A-Z]+-[\w.]+-\d{3}$"  # E-STAGE-SESSION-SEQ
+    },
+    
+    "enums": {
         "type": ["log", "output", "test_result", "diff", "screenshot", "api_response"],
         "verified_by": ["agent", "third-party", "user"],
         "verification_method": ["execution", "inspection", "comparison"]
     },
-    patterns: {
-        "id": "^E-[A-Z]+-[0-9.]+-[0-9]+$",  # E-STAGE-TASK-SEQ
-        "timestamp": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}",
-        "hash": "^[a-f0-9]{64}$"  # SHA256
+    
+    "types": {
+        "verified": bool
     }
 }
 ```
 
-**JSON:**
-```json
-{
-  "evidence": {
-    "id": "E-{STAGE}-{TASK}-{SEQ}",
-    "type": "log|output|test_result|diff|screenshot|api_response",
-    "claim": "string",
-    "location": "absolute_path",
-    "timestamp": "ISO8601",
-    "hash": "sha256",
-    "verified": boolean,
-    "verified_by": "agent|third-party|user",
-    "verification_method": "execution|inspection|comparison"
-  }
-}
-```
+### Example
 
-**Example:**
 ```json
 {
   "evidence": {
-    "id": "E-IMPL-1.1-001",
+    "id": "E-IMPL-abc12345-001",
     "type": "log",
-    "claim": "venv activates successfully",
-    "location": "./logs/stage1_venv.log",
-    "timestamp": "2026-01-04T07:30:00Z",
-    "hash": "a1b2c3d4e5f6...",
+    "claim": "Workflow state machine implemented with all 8 stages",
+    "location": "/home/user/.workflow/evidence/workflow_impl.log",
+    "timestamp": "2026-01-04T07:00:00Z",
+    "hash": "sha256:a1b2c3d4...",
     "verified": true,
     "verified_by": "agent",
     "verification_method": "execution"
@@ -182,353 +184,361 @@ EVIDENCE_SCHEMA = {
 
 ---
 
-## 3. Review Gate Schema
+## 3. REVIEW_GATE
 
 ```python
-REVIEW_GATE_SCHEMA = {
-    name: "review_gate",
-    required: [
-        "stage", "agent", "timestamp",
-        "criteria_checked", "approved", "action", "feedback"
-    ],
-    enums: {
-        "action": ["proceed", "revise", "escalate", "stop"]
+SCHEMAS["review_gate"] = {
+    "required": ["stage", "agent", "timestamp", "criteria_checked", "approved", "action"],
+    
+    "optional": ["feedback"],
+    
+    "enums": {
+        "action": ["proceed", "revise", "escalate"],
+        "stage": ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "VALIDATE", "LEARN"]
+    },
+    
+    "types": {
+        "criteria_checked": list,
+        "approved": bool
     }
 }
 ```
 
-**JSON:**
+### Example
+
 ```json
 {
   "review_gate": {
-    "stage": "string",
-    "agent": "string",
-    "timestamp": "ISO8601",
+    "stage": "REVIEW",
+    "agent": "Opus",
+    "timestamp": "2026-01-04T07:00:00Z",
     "criteria_checked": [
-      {
-        "criterion": "string",
-        "pass": boolean,
-        "evidence": "path",
-        "issue": "string if fail"
-      }
+      {"criterion": "17 fields present", "pass": true, "evidence": ".workflow/todo/"},
+      {"criterion": "No placeholders", "pass": true, "evidence": "grep -r TODO"}
     ],
-    "approved": boolean,
-    "action": "proceed|revise|escalate|stop",
-    "feedback": "string"
+    "approved": true,
+    "action": "proceed",
+    "feedback": "All criteria met"
   }
 }
 ```
 
 ---
 
-## 4. Handoff Schema
+## 4. HANDOFF
 
 ```python
-HANDOFF_SCHEMA = {
-    name: "handoff",
-    required: [
-        "from_agent", "to_agent", "timestamp",
-        "context", "instructions", "expected_output"
-    ]
+SCHEMAS["handoff"] = {
+    "required": ["from_agent", "to_agent", "timestamp", "context"],
+    
+    "context_required": [
+        "user_objective",
+        "current_stage",
+        "completed_stages",
+        "todos_remaining",
+        "evidence_collected",
+        "blockers",
+        "assumptions",
+        "memory_refs"
+    ],
+    
+    "optional": ["instructions", "expected_output", "deadline"],
+    
+    "types": {
+        "completed_stages": list,
+        "todos_remaining": list,
+        "evidence_collected": list,
+        "blockers": list,
+        "assumptions": list,
+        "memory_refs": list
+    }
 }
 ```
 
-**JSON:**
+### Example
+
 ```json
 {
   "handoff": {
-    "from_agent": "string",
-    "to_agent": "string",
-    "timestamp": "ISO8601",
+    "from_agent": "Sonnet",
+    "to_agent": "Opus",
+    "timestamp": "2026-01-04T07:00:00Z",
     "context": {
-      "user_objective": "string",
-      "current_stage": "string",
-      "completed_stages": ["string"],
-      "todos_remaining": [{}],
-      "evidence_collected": [{}],
-      "blockers": ["string"],
-      "assumptions": ["string"],
-      "memory_refs": ["memory_key"]
+      "user_objective": "Build workflow enforcement system",
+      "current_stage": "IMPLEMENT",
+      "completed_stages": ["PLAN", "REVIEW", "DISRUPT"],
+      "todos_remaining": [{"id": "1.3", "content": "..."}],
+      "evidence_collected": ["E-IMPL-abc12345-001"],
+      "blockers": ["Test failure in state machine"],
+      "assumptions": ["Python 3.13 available"],
+      "memory_refs": ["session_123_plan"]
     },
-    "instructions": "string",
-    "expected_output": "string",
-    "deadline": "ISO8601"
-  }
-}
-```
-
-**Acknowledgment:**
-```json
-{
-  "ack": {
-    "from": "receiving_agent",
-    "handoff_id": "string",
-    "understood": boolean,
-    "questions": ["string"],
-    "eta": "ISO8601"
+    "instructions": "Fix test failure and continue implementation",
+    "expected_output": "All tests passing",
+    "deadline": "2026-01-04T08:00:00Z"
   }
 }
 ```
 
 ---
 
-## 5. Recovery Schema
+## 5. CONFLICT
 
 ```python
-RECOVERY_SCHEMA = {
-    name: "recovery",
-    required: [
-        "id", "trigger", "rollback_to",
-        "state_before", "state_after", "success", "resume_stage"
-    ],
-    patterns: {
-        "id": "^R-\\d{8}T\\d{6}$"
-    }
-}
-```
-
-**JSON:**
-```json
-{
-  "recovery": {
-    "id": "R-{timestamp}",
-    "trigger": "string",
-    "rollback_to": "checkpoint_id",
-    "state_before": "path",
-    "state_after": "path",
-    "success": boolean,
-    "resume_stage": "string"
-  }
-}
-```
-
----
-
-## 6. Conflict Schema
-
-```python
-CONFLICT_SCHEMA = {
-    name: "conflict",
-    required: [
-        "id", "type", "parties", "positions"
-    ],
-    enums: {
+SCHEMAS["conflict"] = {
+    "required": ["id", "type", "parties", "positions"],
+    
+    "optional": ["resolution", "acknowledged"],
+    
+    "patterns": {
+        "id": r"^C-\d{8}T\d{6}$"  # C-YYYYMMDDTHHMMSS
+    },
+    
+    "enums": {
         "type": ["plan_disagreement", "evidence_dispute", "priority_conflict", "resource_conflict"]
+    },
+    
+    "types": {
+        "parties": list,
+        "positions": list,
+        "acknowledged": list
     }
 }
 ```
 
-**JSON:**
+### Example
+
 ```json
 {
   "conflict": {
-    "id": "C-{timestamp}",
-    "type": "plan_disagreement|evidence_dispute|priority_conflict|resource_conflict",
-    "parties": ["agent"],
+    "id": "C-20260104T070000",
+    "type": "plan_disagreement",
+    "parties": ["Planner", "Disruptor", "Third-party"],
     "positions": [
-      {
-        "agent": "string",
-        "position": "string",
-        "evidence": "path"
-      }
+      {"agent": "Planner", "position": "Use async", "evidence": ".workflow/plans/"},
+      {"agent": "Disruptor", "position": "Use sync for simplicity", "evidence": ".workflow/disrupt/"},
+      {"agent": "Third-party", "position": "Async with fallback", "evidence": "API response"}
     ],
     "resolution": {
-      "decided_by": "string",
-      "decision": "string",
-      "rationale": "string",
-      "timestamp": "ISO8601"
+      "decided_by": "gpt-5.2",
+      "decision": "Use async with sync fallback",
+      "rationale": "Performance benefits with reliability guarantee",
+      "timestamp": "2026-01-04T07:30:00Z"
     },
-    "acknowledged": ["agent"]
+    "acknowledged": ["Planner", "Disruptor"]
   }
 }
 ```
 
 ---
 
-## 7. Metrics Schema
+## 6. METRICS
 
 ```python
-METRICS_SCHEMA = {
-    name: "metrics",
-    required: [
-        "workflow_id", "timestamp", "total_time_min",
-        "stages", "agents", "evidence", "quality"
-    ]
-}
-```
-
-**JSON:**
-```json
-{
-  "metrics": {
-    "workflow_id": "string",
-    "timestamp": "ISO8601",
-    "total_time_min": 0,
-    "stages": {
-      "completed": 0,
-      "failed": 0,
-      "review_rejections": 0
-    },
-    "agents": {
-      "tasks_assigned": 0,
-      "tasks_completed": 0,
-      "first_pass_success": 0
-    },
-    "evidence": {
-      "claims": 0,
-      "verified": 0
-    },
-    "quality": {
-      "reality_tests_passed": 0,
-      "rules_followed": 0,
-      "review_gates_passed": 0
-    },
-    "rollbacks": 0,
-    "conflicts": 0
-  }
-}
-```
-
----
-
-## 8. Skill Schema
-
-```python
-SKILL_SCHEMA = {
-    name: "skill",
-    required: [
-        "name", "source", "purpose", "interface", "tested"
-    ]
-}
-```
-
-**JSON:**
-```json
-{
-  "skill": {
-    "name": "string",
-    "source": "string",
-    "purpose": "string",
-    "interface": "string",
-    "tested": boolean,
-    "evidence_location": "string"
-  }
-}
-```
-
----
-
-## 9. Startup Schema
-
-```python
-STARTUP_SCHEMA = {
-    name: "startup",
-    required: [
-        "mcp_verified", "scheduler_active", "memory_ok",
-        "env_ready", "workflow_dir", "timestamp"
-    ]
-}
-```
-
-**JSON:**
-```json
-{
-  "startup": {
-    "mcp_verified": boolean,
-    "scheduler_active": boolean,
-    "memory_ok": boolean,
-    "env_ready": boolean,
-    "workflow_dir": ".workflow/{id}/",
-    "timestamp": "ISO8601"
-  }
-}
-```
-
----
-
-## 10. Stage Output Schema
-
-```python
-STAGE_OUTPUT_SCHEMA = {
-    name: "stage_output",
-    required: [
-        "stage", "model", "agents", "status",
-        "evidence_location", "next_stage"
+SCHEMAS["metrics"] = {
+    "required": [
+        "workflow_id",
+        "timestamp",
+        "total_time_min",
+        "stages",
+        "agents",
+        "evidence",
+        "quality"
     ],
-    enums: {
-        "stage": ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "VALIDATE", "LEARN"],
-        "status": ["PASS", "FAIL"]
+    
+    "optional": ["rollbacks", "conflicts"],
+    
+    "types": {
+        "total_time_min": int,
+        "rollbacks": int,
+        "conflicts": int
     }
 }
 ```
 
-**JSON:**
+### Example
+
 ```json
 {
-  "stage_output": {
-    "stage": "string",
-    "model": "string",
-    "agents": ["string"],
-    "skills": ["string"],
-    "mcp": ["string"],
-    "input_files": ["string"],
-    "process_summary": "string",
-    "status": "PASS|FAIL",
-    "evidence_location": "string",
-    "evidence_tail": "string",
-    "next_stage": "string"
+  "metrics": {
+    "workflow_id": "20260104_070000_abc12345",
+    "timestamp": "2026-01-04T08:00:00Z",
+    "total_time_min": 60,
+    "stages": {
+      "completed": 8,
+      "failed": 0,
+      "review_rejections": 1
+    },
+    "agents": {
+      "tasks_assigned": 10,
+      "tasks_completed": 10,
+      "first_pass_success": 8
+    },
+    "evidence": {
+      "claims": 15,
+      "verified": 15
+    },
+    "quality": {
+      "reality_tests_passed": 5,
+      "rules_followed": 20,
+      "review_gates_passed": 3
+    },
+    "rollbacks": 0,
+    "conflicts": 1
   }
 }
 ```
 
 ---
 
-## Schema Registry
+## 7. SKILL
 
 ```python
-SCHEMAS = {
-    "todo": TODO_SCHEMA,
-    "evidence": EVIDENCE_SCHEMA,
-    "review_gate": REVIEW_GATE_SCHEMA,
-    "handoff": HANDOFF_SCHEMA,
-    "recovery": RECOVERY_SCHEMA,
-    "conflict": CONFLICT_SCHEMA,
-    "metrics": METRICS_SCHEMA,
-    "skill": SKILL_SCHEMA,
-    "startup": STARTUP_SCHEMA,
-    "stage_output": STAGE_OUTPUT_SCHEMA
+SCHEMAS["skill"] = {
+    "required": ["name", "source", "purpose", "interface", "tested", "evidence_location"],
+    
+    "types": {
+        "tested": bool
+    }
+}
+```
+
+### Example
+
+```json
+{
+  "skill": {
+    "name": "workflow-enforcement",
+    "source": "LEARN stage",
+    "purpose": "Enforce 8-stage workflow with quality gates",
+    "interface": "python scripts/workflow_main.py",
+    "tested": true,
+    "evidence_location": ".workflow/test/skill_test.log"
+  }
+}
+```
+
+---
+
+## 8. STARTUP
+
+```python
+SCHEMAS["startup"] = {
+    "required": [
+        "mcp_verified",
+        "scheduler_active",
+        "memory_ok",
+        "env_ready",
+        "workflow_dir",
+        "timestamp"
+    ],
+    
+    "types": {
+        "mcp_verified": bool,
+        "scheduler_active": bool,
+        "memory_ok": bool,
+        "env_ready": bool
+    }
+}
+```
+
+### Example
+
+```json
+{
+  "startup": {
+    "mcp_verified": true,
+    "scheduler_active": true,
+    "memory_ok": true,
+    "env_ready": true,
+    "workflow_dir": ".workflow/20260104_070000_abc12345/",
+    "timestamp": "2026-01-04T07:00:00Z"
+  }
+}
+```
+
+---
+
+## 9. RECOVERY
+
+```python
+SCHEMAS["recovery"] = {
+    "required": [
+        "id",
+        "trigger",
+        "rollback_to",
+        "state_before",
+        "state_after",
+        "success",
+        "resume_stage"
+    ],
+    
+    "patterns": {
+        "id": r"^R-\d{8}T\d{6}$"  # R-YYYYMMDDTHHMMSS
+    },
+    
+    "enums": {
+        "resume_stage": ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "VALIDATE", "LEARN"]
+    },
+    
+    "types": {
+        "success": bool
+    }
+}
+```
+
+### Example
+
+```json
+{
+  "recovery": {
+    "id": "R-20260104T073000",
+    "trigger": "quality_gate_stop",
+    "rollback_to": "checkpoint_impl_001",
+    "state_before": ".workflow/state/implement/before.json",
+    "state_after": ".workflow/state/implement/after.json",
+    "success": false,
+    "resume_stage": "IMPLEMENT"
+  }
+}
+```
+
+---
+
+## 10. QUALITY GATES
+
+```python
+QUALITY_GATES = {
+    "PLAN":      ["todo", "evidence"],
+    "REVIEW":    ["review_gate", "evidence"],
+    "DISRUPT":   ["conflict", "evidence"],
+    "IMPLEMENT": ["todo", "evidence"],
+    "TEST":      ["evidence", "metrics"],
+    "VALIDATE":  ["review_gate", "evidence"],
+    "LEARN":     ["skill", "metrics"]
 }
 
-PROCEDURE get_schema(name):
-    IF name NOT IN SCHEMAS:
-        RAISE ValueError(f"Unknown schema: {name}")
-    RETURN SCHEMAS[name]
+def gate_check(stage: str, outputs: list) -> GateResult:
+    """Check quality gate for a stage."""
+    required = QUALITY_GATES[stage]
+    checked = []
+    errors = []
+    
+    FOR output IN outputs:
+        schema = detect_schema(output)
+        IF schema:
+            valid, errs = validate(output, schema)
+            checked.append(schema)
+            errors.extend(errs)
+    
+    FOR req IN required:
+        IF req NOT IN checked:
+            errors.append(f"Missing required: {req}")
+    
+    RETURN GateResult(
+        valid=len(errors) == 0,
+        checked=checked,
+        errors=errors,
+        action="PROCEED" IF len(errors) == 0 ELSE "REVISE"
+    )
 ```
-
----
-
-## Validation Examples
-
-```python
-# Validate todo
-todo = {"id": "1.1", "content": "Test", ...}
-result = validate(todo, "todo")
-IF NOT result.valid:
-    FOR error IN result.errors:
-        PRINT(f"❌ {error}")
-
-# Validate evidence
-evidence = {"id": "E-IMPL-1.1-001", ...}
-result = validate(evidence, "evidence")
-ASSERT result.valid
-
-# Validate stage output
-output = {"stage": "IMPLEMENT", ...}
-result = validate(output, "stage_output")
-IF NOT result.valid:
-    RESTART_AGENT(errors=result.errors)
-```
-
----
-
-## END OF SCHEMAS.md
