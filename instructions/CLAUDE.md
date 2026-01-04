@@ -1,523 +1,369 @@
 # CLAUDE.md
 
-```yaml
-VERSION: 5.0
-MODIFIED: 2026-01-04T07:00:00Z
-TYPE: ENTRY_POINT
-IMPORTS: [AGENTS.md, SCHEMAS.md, SKILLS.md, HOOKS.md]
-NODE: cabin-pc (MASTER)
-REPO: github.com/jujo1/agent-startup
+**Version:** 4.0.0  
+**Modified:** 2026-01-04T07:30:00Z  
+**References:** `WORKFLOW.md`, `INFRASTRUCTURE.md`, `SCHEMAS.md`, `RULES.md`
+
+---
+
+## Web Agent Setup
+
+### 1. Clone Startup
+```bash
+git clone https://github.com/jujo1/agent-startup.git
+```
+
+### 2. Establish Funnel Connection
+```
+Funnel URL: https://cabin-pc.tail1a496.ts.net
+SSE Endpoint: https://cabin-pc.tail1a496.ts.net/sse
+Internal IP: 100.121.56.65:3000
+```
+
+### 3. Connect MCP Gateway
+
+Add to Claude MCP servers (Settings → Integrations):
+
+| Field | Value |
+|-------|-------|
+| Name | `cabin_mcp` or `MPC-Gateway` |
+| URL | `https://cabin-pc.tail1a496.ts.net/sse` |
+| Transport | SSE |
+
+### 4. Verify Connection
+```
+MPC-Gateway:ping → {"status": "pong", "host": "cabin-pc"}
+MPC-Gateway:get_status → {"platform": "Windows", "python": "3.13.7"}
+MPC-Gateway:list_nodes → cabin-pc, office-pc, homeassistant
 ```
 
 ---
 
-## 0. IDENTITY
+## Entry Point
 
-```python
-SYSTEM = {
-    "hostname": "CABIN-PC",
-    "ip": "100.121.56.65",
-    "role": "MASTER_ORCHESTRATOR",
-    "gateway": "https://cabin-pc.tail1a496.ts.net",
-    "capacity": 25,
-    "os": "Windows 11",
-    "shell": "pwsh.exe",
-    "python": "3.13.7"
-}
-
-SESSION = {
-    "id": ENV["SESSION_ID"] or generate_session_id(),
-    "workflow_id": None,  # Set by startup
-    "start_time": TIMESTAMP(),
-    "agent_model": "Claude",
-    "instructions_version": "5.0"
-}
+```
+main(user_input) → startup() → plan() → WORKFLOW → final_output()
 ```
 
 ---
 
-## 1. STARTUP [BLOCKING]
+## 1. Constants
 
 ```python
-def on_session_start():
-    """Execute on every new session. BLOCKING - must pass before proceeding."""
-    
-    # 1.1 Load instructions
-    LOAD "AGENTS.md"     # Workflow, agents, rules
-    LOAD "SCHEMAS.md"    # 9 validation schemas
-    LOAD "SKILLS.md"     # Superpowers skills
-    LOAD "HOOKS.md"      # Hook definitions
-    
-    # 1.2 Run startup validator
-    result = CALL hooks/startup_validator.py --check
-    ASSERT result.status == "PASS", f"Startup failed: {result.errors}"
-    
-    # 1.3 Initialize workflow
-    SESSION.workflow_id = result.workflow_id
-    WORKFLOW_DIR = result.workflow_dir
-    
-    # 1.4 Display startup report
-    PRINT startup_report(result)
-    
-    # 1.5 Ready
-    RETURN "READY"
-```
-
-### 1.1 Startup Checklist
-
-| # | Item | Check | Pass | Fail |
-|---|------|-------|------|------|
-| S01 | MCP memory | ping | ✅ | ABORT |
-| S02 | MCP todo | ping | ✅ | ABORT |
-| S03 | MCP sequential-thinking | ping | ✅ | ABORT |
-| S04 | MCP git | ping | ✅ | WARN |
-| S05 | MCP github | ping | ✅ | WARN |
-| S06 | MCP scheduler | ping | ✅ | ABORT |
-| S07 | MCP openai-chat | ping | ✅ | WARN |
-| S08 | MCP credentials | ping | ✅ | WARN |
-| S09 | MCP mcp-gateway | ping | ✅ | WARN |
-| S10 | Reprompt timer | scheduler/create | ✅ | ABORT |
-| S11 | Compaction hook | scheduler/create | ✅ | WARN |
-| S12 | Memory read/write | test | ✅ | ABORT |
-| S13 | Workflow directory | mkdir | ✅ | ABORT |
-| S14 | Skills available | check | ✅ | WARN |
-| S15 | Credentials | exists | ✅ | WARN |
-
----
-
-## 2. NETWORK
-
-```python
-NODES = {
-    "cabin-pc": {
-        "ip": "100.121.56.65",
-        "capacity": 25,
-        "status": "ACTIVE",
-        "role": "master",
-        "mcp_port": 3000
-    },
-    "office-pc": {
-        "ip": "100.84.172.79",
-        "capacity": 40,
-        "status": "ACTIVE",
-        "role": "worker",
-        "mcp_port": 3000
-    },
-    "homeassistant": {
-        "ip": "100.116.245.37",
-        "capacity": 8,
-        "status": "ACTIVE",
-        "role": "worker",
-        "mcp_port": 8123
-    }
-}
-
-TOTAL_CAPACITY = sum(n["capacity"] for n in NODES.values() if n["status"] == "ACTIVE")  # 73
-
-def allocate_task(task_type: str) -> str:
-    """Allocate task to appropriate node."""
-    IF task_type == "planning":
-        RETURN "cabin-pc"  # Opus on master
-    ELIF task_type == "execution":
-        RETURN max(NODES, key=lambda n: NODES[n]["capacity"])  # office-pc
-    ELIF task_type == "homeauto":
-        RETURN "homeassistant"
-    ELSE:
-        RETURN round_robin(NODES)
-```
-
----
-
-## 3. DOCKER
-
-```python
-CONTAINERS = {
-    "milvus-standalone": {"node": "cabin-pc", "port": 19530, "purpose": "vector_embeddings"},
-    "qdrant":            {"node": "cabin-pc", "port": 6333,  "purpose": "vector_search"},
-    "mcp-gateway":       {"node": "cabin-pc", "port": 8081,  "purpose": "mcp_routing"},
-    "postgres-claude":   {"node": "office-pc", "port": 5432, "purpose": "general_storage"},
-    "postgres-creds":    {"node": "office-pc", "port": 5433, "purpose": "encrypted_creds"},
-    "redis":             {"node": "office-pc", "port": 6379, "purpose": "cache_queues"}
-}
-
-def health_check(container: str) -> bool:
-    node = CONTAINERS[container]["node"]
-    result = CALL mcp-gateway/remote_exec {node: node, command: f"docker ps --filter name={container}"}
-    RETURN "Up" in result.stdout
-```
-
----
-
-## 4. MCP SERVERS
-
-```python
-MCP_SERVERS = {
-    "memory":             {"type": "local",  "purpose": "Persistent memory storage"},
-    "todo":               {"type": "local",  "purpose": "Task management with 17-field schema"},
-    "sequential-thinking":{"type": "local",  "purpose": "Step-by-step reasoning"},
-    "git":                {"type": "local",  "purpose": "Git operations"},
-    "github":             {"type": "remote", "purpose": "GitHub API"},
-    "scheduler":          {"type": "local",  "purpose": "Timers and scheduled tasks"},
-    "openai-chat":        {"type": "remote", "purpose": "GPT-5.2 third-party review"},
-    "credentials":        {"type": "local",  "purpose": "Encrypted credential storage"},
-    "mcp-gateway":        {"type": "remote", "purpose": "Cross-node MCP routing"},
-    "claude-context":     {"type": "local",  "purpose": "Context management"}
-}
-
-def mcp_call(server: str, method: str, params: dict) -> dict:
-    """Call MCP server method."""
-    IF server not in MCP_SERVERS:
-        RAISE MCPError(f"Unknown server: {server}")
-    RETURN CALL {server}/{method} params
-```
-
----
-
-## 5. MEMORY SYSTEMS
-
-```python
-MEMORY = {
-    "mcp_memory": {
-        "location": "~/.caches/memory/memory.json",
-        "server": "memory",
-        "ops": ["read", "write", "search", "delete"]
-    },
-    "shared_memory": {
-        "location": "~/.claude/shared-memory/",
-        "server": "memory-bank",
-        "ops": ["read", "write", "list"]
-    },
-    "episodic_memory": {
-        "location": "~/.config/superpowers/conversation-archive/",
-        "server": "episodic-memory",
-        "ops": ["search", "archive"]
-    }
-}
-
-def memory_workflow(phase: str, data: dict = None) -> dict:
-    """Execute memory operations for workflow phase."""
-    SWITCH phase:
-        CASE "startup":
-            prev = CALL memory/search {query: "last_session"}
-            todos = CALL todo/sync
-            RETURN {"previous_session": prev, "pending_todos": todos}
-        
-        CASE "before_task":
-            context = CALL episodic-memory/search {query: data["task"]}
-            RETURN {"context": context}
-        
-        CASE "after_task":
-            CALL memory/write {key: data["task_id"], value: data["result"]}
-            CALL memory-bank/write {key: data["task_id"], value: data["result"]}
-            RETURN {"stored": True}
-        
-        CASE "shutdown":
-            summary = create_session_summary()
-            CALL memory/write {key: f"session_{SESSION.id}", value: summary}
-            RETURN {"summary": summary}
-```
-
----
-
-## 6. CREDENTIALS
-
-```python
-CREDENTIAL_PATHS = {
-    "primary": "~/.credentials/credentials.json",
-    "mcp_tokens": "~/.credentials/mcp_tokens.json",
-    "mcp_configs": "~/.claude/settings.json"
-}
-
-MCP_GATEWAY_TOKENS = {
-    "claude_web": "D8V6nXegr2P1fd9PfLHNiVbLBCyG1N6jR0vTfI18b_k",
-    "claude_code": "BrdjN6ALPRbNRhcfOs1C-dRMeq4EbMLJsDAL3A9UN8M",
-    "backup": "65QE33Np7dsER73IUc2kZevfZv1WZvNc-q1-Z5pvHms"
-}
-
-def get_credential(service: str) -> str:
-    creds = CALL credentials/get {service: service}
-    IF creds.error:
-        RAISE CredentialError(f"Missing credential: {service}")
-    RETURN creds.value
-```
-
----
-
-## 7. PATHS
-
-```python
-PATHS = {
-    # Instructions
-    "claude_md":     "~/.claude/CLAUDE.md",
-    "agents_md":     "~/.claude/AGENTS.md",
-    "schemas_md":    "~/.claude/SCHEMAS.md",
-    "skills_md":     "~/.claude/SKILLS.md",
-    "hooks_md":      "~/.claude/HOOKS.md",
-    
-    # Directories
-    "settings":      "~/.claude/settings.json",
-    "credentials":   "~/.credentials/credentials.json",
-    "shared_memory": "~/.claude/shared-memory/",
-    "skills":        "~/.claude/skills/",
-    "hooks":         "~/.claude/hooks/",
-    "logs":          "~/.claude/logs/",
-    "workflow":      "~/.claude/.workflow/",
-    "agents":        "~/.claude/agents/",
-    "scripts":       "~/.claude/scripts/"
-}
-
-def resolve_path(key: str) -> Path:
-    RETURN Path(PATHS[key]).expanduser().resolve()
-```
-
----
-
-## 8. WORKFLOW [→ AGENTS.md]
-
-```python
-# Workflow is defined in AGENTS.md
-# Summary here for reference
-
+VERSION = "4.0.0"
 WORKFLOW = ["PLAN", "REVIEW", "DISRUPT", "IMPLEMENT", "TEST", "REVIEW", "VALIDATE", "LEARN"]
-
-MODELS = {
-    "planning": "Opus",
-    "execution": "Sonnet",
-    "review": "gpt-5.2",
-    "learn": "Haiku"
-}
-
-# See AGENTS.md for full workflow definition
+MAX_RETRY = 3
+TIMEOUT_MINUTES = 20
+PARALLEL_THRESHOLD = 3
+TODO_FIELDS = 17
 ```
 
 ---
 
-## 9. HOOKS [→ HOOKS.md]
+## 2. Imports
+
+| Document | Purpose |
+|----------|---------|
+| `WORKFLOW.md` | 8-stage workflow procedures |
+| `INFRASTRUCTURE.md` | Nodes, MCP, Docker, credentials |
+| `SCHEMAS.md` | Todo, evidence, handoff, metrics schemas |
+| `RULES.md` | R01-R54 enforcement rules |
+| `agents/*.md` | Agent definitions |
+
+---
+
+## 3. Startup (BLOCKING)
 
 ```python
-# Hooks are defined in HOOKS.md
-# Summary here for reference
-
-HOOKS = {
-    "startup_validator":    "hooks/startup_validator.py",
-    "reprompt_timer":       "hooks/reprompt_timer.py",
-    "pre_compaction_hook":  "hooks/pre_compaction_hook.py",
-    "skills_loader":        "hooks/skills_loader.py",
-    "stage_gate_validator": "hooks/stage_gate_validator.py",
-    "evidence_validator":   "hooks/evidence_validator.py",
-    "output_validator":     "hooks/output_validator.py"
-}
-
-# See HOOKS.md for full hook definitions
+PROCEDURE startup():
+    # 3.1 MCP Verification (via MCP Gateway)
+    ping_result = CALL MPC-Gateway:ping
+    IF ping_result.status != "pong": TERMINATE("MCP Gateway failed")
+    
+    FOR server IN MCP_SERVERS:
+        IF NOT ping(server): TERMINATE("MCP {server} failed")
+    
+    # 3.2 Scheduler Setup
+    scheduler.create("reprompt_timer", interval="5m")
+    compaction.register_hook("quality_gate_check")
+    
+    # 3.3 Memory Test
+    memory.write("startup_test", TIMESTAMP)
+    IF NOT memory.read("startup_test"): TERMINATE("Memory failed")
+    
+    # 3.4 Workflow Directory
+    workflow_id = "{YYYYMMDD}_{HHMMSS}_{chat_id}"
+    FOR dir IN ["todo", "docs", "test", "plans", "evidence", "logs", "parallel"]:
+        mkdir(".workflow/{workflow_id}/{dir}")
+    
+    RETURN {status: "PASS", workflow_id, base_path}
 ```
+
+**Hook:** `startup_validator.py`
 
 ---
 
-## 10. SKILLS [→ SKILLS.md]
+## 4. MCP Servers
+
+| Server | Purpose | Via Gateway |
+|--------|---------|-------------|
+| `MPC-Gateway` | Main gateway | Direct |
+| `memory` | Storage | Yes |
+| `todo` | Task management | Yes |
+| `sequential-thinking` | Reasoning | Yes |
+| `git` | Version control | Yes |
+| `github` | GitHub API | Yes |
+| `scheduler` | Timers | Yes |
+| `openai-chat` | Third-party review | Yes |
+| `credentials` | Secure storage | Yes |
+| `claude-context` | Semantic search | Yes |
+
+### Gateway Tools
 
 ```python
-# Skills are defined in SKILLS.md
-# Summary here for reference
-
-SKILLS = {
-    "verification-before-completion": "Evidence before claims",
-    "executing-plans":                "Execute plans in batches",
-    "test-driven-development":        "RED-GREEN-REFACTOR",
-    "systematic-debugging":           "4-phase root cause",
-    "brainstorming":                  "Refine ideas through questions",
-    "requesting-code-review":         "Request review with context",
-    "receiving-code-review":          "Handle feedback with rigor",
-    "subagent-driven-development":    "Dispatch subagents per task",
-    "dispatching-parallel-agents":    "Coordinate parallel agents"
-}
-
-# See SKILLS.md for full skill definitions
+GATEWAY_TOOLS = [
+    "ping",           # Test connectivity
+    "get_status",     # Platform info
+    "list_nodes",     # Available nodes
+    "node_status",    # Check node
+    "remote_exec",    # Execute on node
+    "remote_mcp",     # Proxy MCP call
+    "remote_file_read",
+    "remote_file_write",
+    "read_file",
+    "list_directory",
+    "grep",
+    "glob_files"
+]
 ```
 
 ---
 
-## 11. AGENTS [→ AGENTS.md §5]
+## 5. Main Loop
 
 ```python
-# Agents are defined in AGENTS.md
-# Summary here for reference
-
-AGENTS = {
-    "Planner":      {"model": "Opus",   "stage": "PLAN"},
-    "Research":     {"model": "Opus",   "stage": "PLAN"},
-    "Reviewer":     {"model": "Opus",   "stage": "REVIEW"},
-    "Debate":       {"model": "Opus",   "stage": "DISRUPT"},
-    "Third-party":  {"model": "gpt-5.2","stage": "DISRUPT,VALIDATE"},
-    "Executor":     {"model": "Sonnet", "stage": "IMPLEMENT"},
-    "Observer":     {"model": "Sonnet", "stage": "IMPLEMENT"},
-    "Tester":       {"model": "Sonnet", "stage": "TEST"},
-    "Morality":     {"model": "Opus",   "stage": "VALIDATE"},
-    "Learn":        {"model": "Haiku",  "stage": "LEARN"}
-}
-
-# See AGENTS.md for full agent definitions
+PROCEDURE main(user_input):
+    startup_result = startup()
+    ASSERT startup_result.status == "PASS"
+    
+    plan_result = plan(user_input)
+    ASSERT plan_result.status == "APPROVED"
+    
+    current_stage = "REVIEW"
+    WHILE current_stage != "COMPLETE":
+        output = execute_stage(current_stage)
+        gate = quality_gate(current_stage, output)
+        
+        SWITCH gate.action:
+            CASE "PROCEED": current_stage = next_stage(current_stage)
+            CASE "REVISE": retry_count += 1; IF retry_count > MAX_RETRY: ESCALATE
+            CASE "ESCALATE": handoff_to_opus(current_stage, output)
+            CASE "STOP": TERMINATE(gate.reason)
+    
+    RETURN final_output()
 ```
 
 ---
 
-## 12. RULES [→ AGENTS.md §7]
+## 6. Quality Gates (BLOCKING)
+
+| Stage | Required Schemas | Reviewer | Third-Party |
+|-------|-----------------|----------|-------------|
+| PLAN | todo, evidence | User | No |
+| REVIEW | review_gate, evidence | Opus | No |
+| DISRUPT | conflict, evidence | Opus | **GPT-5.2** |
+| IMPLEMENT | todo, evidence | Agent | No |
+| TEST | evidence, metrics | Agent | No |
+| REVIEW | review_gate, evidence | Opus | No |
+| VALIDATE | review_gate, evidence | Opus | **GPT-5.2** |
+| LEARN | skill, metrics | Haiku | No |
+
+**Hook:** `stage_gate_validator.py`
+
+---
+
+## 7. Agents
+
+| Agent | Model | Stage | Trigger |
+|-------|-------|-------|---------|
+| Planner | Opus 4.5 | PLAN | Task start |
+| Reviewer | Opus 4.5 | REVIEW | After PLAN/TEST |
+| Disruptor | Opus 4.5 | DISRUPT | After REVIEW |
+| Executor | Sonnet 4.5 | IMPLEMENT | After DISRUPT |
+| Tester | Sonnet 4.5 | TEST | After IMPLEMENT |
+| Validator | GPT-5.2 | VALIDATE | After REVIEW |
+| Learner | Haiku 4.5 | LEARN | After VALIDATE |
+| Observer | Opus 4.5 | ALL | Complex tasks |
+
+---
+
+## 8. Todo Schema (17 Fields)
 
 ```python
-# Rules are defined in AGENTS.md
-# Summary here for reference
-
-RULES = {
-    # Evidence (R01-R05)
-    "R01": "semantic_search_before_grep",
-    "R02": "logging_present",
-    "R03": "no_error_hiding",
-    "R04": "paths_tracked",
-    "R05": "evidence_exists",
+TODO = {
+    # Base (4)
+    "id": "1.1",
+    "content": "Task description",
+    "status": "pending",  # pending|in_progress|completed|blocked|failed
+    "priority": "high",   # high|medium|low
     
-    # Code (R06-R10)
-    "R06": "types_present",
-    "R07": "absolute_paths",
-    "R08": "no_placeholders",
-    "R09": "no_fabrication",
-    "R10": "complete_code",
-    
-    # Workflow (R11-R15)
-    "R11": "parallel_for_3plus",
-    "R12": "memory_stored",
-    "R13": "auto_transition",
-    "R14": "observer_for_complex",
-    "R15": "workflow_followed",
-    
-    # Validation (R16-R20)
-    "R16": "checklist_complete",
-    "R17": "reprompt_timer_active",
-    "R18": "review_gate_passed",
-    "R19": "quality_100_percent",
-    "R20": "third_party_approved"
+    # Metadata (13)
+    "metadata": {
+        "objective": "What this achieves",
+        "success_criteria": "How to verify",
+        "fail_criteria": "What indicates failure",
+        "evidence_required": "log",  # log|output|test_result|diff|screenshot
+        "evidence_location": ".workflow/evidence/1.1.log",
+        "agent_model": "Claude",  # Claude|GPT|Ollama
+        "workflow": "PLAN→IMPLEMENT→TEST",
+        "blocked_by": [],
+        "parallel": False,
+        "workflow_stage": "IMPLEMENT",
+        "instructions_set": "CLAUDE.md",
+        "time_budget": "≤15m",
+        "reviewer": "GPT-5.2"
+    }
 }
-
-# See AGENTS.md for full rule definitions
 ```
+
+**Hook:** `todo_enforcer.py`
 
 ---
 
-## 13. MORALITY
+## 9. Evidence Requirements
+
+5-step verification:
 
 ```python
-MORALITY = {
-    "NEVER": [
-        "fabricate",
-        "hide errors",
-        "use placeholders",
-        "skip validation",
-        "claim without evidence",
-        "self-verify only",
-        "break working systems"
-    ],
-    "ALWAYS": [
-        "execute before claim",
-        "validate against schema",
-        "pass quality gate",
-        "follow workflow stages",
-        "store evidence",
-        "get third-party review",
-        "complete full request"
-    ]
-}
+1. IDENTIFY  # Name command/tool
+2. RUN       # Execute with logging
+3. READ      # Check for errors
+4. VERIFY    # Confirm success criteria
+5. STATE     # Summarize with evidence path
+```
 
-def morality_check(action: str, output: dict) -> bool:
-    FOR forbidden in MORALITY["NEVER"]:
-        IF forbidden in action.lower():
-            RETURN False
-    
-    FOR required in MORALITY["ALWAYS"]:
-        IF required == "validate against schema":
-            IF NOT output.get("schema_valid"):
-                RETURN False
-        IF required == "pass quality gate":
-            IF NOT output.get("gate_passed"):
-                RETURN False
-    
-    RETURN True
+**Hook:** `evidence_validator.py`
+
+---
+
+## 10. Network Topology
+
+```
+CLAUDE WEB/CLOUD
+       │
+       │ SSE
+       ▼
+┌──────────────────────────────────────┐
+│ https://cabin-pc.tail1a496.ts.net/sse│  Funnel
+└──────────────────┬───────────────────┘
+                   │
+                   ▼
+        ┌─────────────────┐
+        │    cabin-pc     │  MASTER
+        │  100.121.56.65  │
+        │   MCP Gateway   │
+        └────────┬────────┘
+                 │
+      ┌──────────┼──────────┐
+      ▼          ▼          ▼
+ office-pc  homeassistant  [MCP Servers]
+ 40 agents    8 agents      10 servers
 ```
 
 ---
 
-## 14. QUICK REFERENCE
+## 11. Parallel Execution (M40)
 
-### Startup Command
-```bash
-python ~/.claude/hooks/startup_validator.py --check
-```
-
-### Quality Gate Check
-```bash
-python ~/.claude/hooks/reprompt_timer.py --check
-```
-
-### Load Skills for Stage
-```bash
-python ~/.claude/hooks/skills_loader.py --stage IMPLEMENT
-```
-
-### Pre-Compaction Export
-```bash
-python ~/.claude/hooks/pre_compaction_hook.py --export --force
-```
-
-### Run Tests
-```bash
-python ~/.claude/tests/test_workflow.py -v
+```python
+IF len(tasks) >= PARALLEL_THRESHOLD:
+    MUST execute_parallel(tasks)
 ```
 
 ---
 
-## 15. FILE MANIFEST
+## 12. Reprompt Template
 
 ```
-~/.claude/
-├── CLAUDE.md              # THIS FILE - Entry point
-├── AGENTS.md              # Workflow, agents, rules
-├── SCHEMAS.md             # 9 validation schemas
-├── SKILLS.md              # Superpowers skills
-├── HOOKS.md               # Hook definitions
-├── hooks/
-│   ├── startup_validator.py
-│   ├── reprompt_timer.py
-│   ├── pre_compaction_hook.py
-│   ├── skills_loader.py
-│   ├── stage_gate_validator.py
-│   ├── evidence_validator.py
-│   └── output_validator.py
+================================================================================
+⛔ QUALITY GATE FAILED
+================================================================================
+STAGE:   {stage}
+ACTION:  {action}
+ERRORS:  {count}
+--------------------------------------------------------------------------------
+{errors}
+--------------------------------------------------------------------------------
+REQUIRED: {schemas}
+FIX:     Address errors, resubmit
+================================================================================
+```
+
+---
+
+## 13. Morality (Non-Negotiable)
+
+```
+NEVER fabricate
+NEVER hide errors
+NEVER use placeholders
+NEVER claim without evidence
+NEVER self-review
+ALWAYS execute before claim
+ALWAYS validate against schema
+ALWAYS pass quality gate
+```
+
+---
+
+## 14. Quick Reference
+
+### Commands
+
+```bash
+# Startup
+python scripts/startup.py
+
+# Validate todo
+python scripts/validate.py --todo todo.json
+
+# Check MCP
+python tools/mcp_ping.py
+
+# Third-party review
+python tools/third_party.py --stage VALIDATE --file outputs.json
+```
+
+### MCP Gateway Calls
+
+```
+MPC-Gateway:ping
+MPC-Gateway:get_status
+MPC-Gateway:list_nodes
+MPC-Gateway:node_status node="cabin-pc"
+MPC-Gateway:remote_exec command="ls" node="office-pc"
+MPC-Gateway:read_file path="/path/to/file"
+```
+
+---
+
+## 15. Files
+
+```
+agent-startup/
+├── instructions/
+│   ├── CLAUDE.md          ← YOU ARE HERE
+│   ├── WORKFLOW.md
+│   ├── INFRASTRUCTURE.md
+│   ├── SCHEMAS.md
+│   ├── RULES.md
+│   └── agents/
+├── skills/workflow-enforcement/
 ├── scripts/
-│   ├── workflow_state_machine.py
-│   └── workflow_main.py
-├── agents/
-│   ├── planner.yaml
-│   ├── reviewer.yaml
-│   ├── executor.yaml
-│   └── ...
-├── skills/
-│   └── (loaded from superpowers)
-├── templates/
-│   ├── PLAN_OUTPUT_TEMPLATE.md
-│   └── ...
-├── tests/
-│   └── test_workflow.py
-├── logs/
-├── .workflow/
-└── shared-memory/
+├── tools/
+├── config/
+└── templates/
 ```
 
 ---
 
-## 16. VERSION HISTORY
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 5.0 | 2026-01-04 | Complete rewrite with state machine |
-| 4.0 | 2026-01-03 | AGENTS_3 procedural format |
-| 3.5 | 2026-01-02 | Personalization v3.5 |
-| 3.0 | 2026-01-01 | Agent personas v1.0 |
-| 2.0 | 2025-12-30 | Mandatory rules v1.2 |
-| 1.0 | 2025-12-28 | Initial version |
+## END OF CLAUDE.md
