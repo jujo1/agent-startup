@@ -74,6 +74,21 @@
 
 ---
 
+## MCP Funnel - Cloud Agent Gateway (6 files) ✅ NEW
+
+| File | Size | Purpose |
+|------|------|---------|
+| mcp-funnel/README.md | 8.1KB | Complete setup and usage documentation |
+| mcp-funnel/mcp_auth_proxy.py | 13.8KB | Authenticated MCP proxy server (FastAPI) |
+| mcp-funnel/generate_tokens.py | 6.6KB | Token generation and management utility |
+| mcp-funnel/config.yaml | 3.6KB | Configuration for Tailscale funnel + MCP |
+| mcp-funnel/bootstrap.sh | 6.3KB | Automated setup script (dependencies + funnel) |
+| mcp-funnel/requirements.txt | 251B | Python package dependencies |
+
+**Purpose**: Enables Claude.ai web agents to access local MCP servers through Tailscale funnel with token-based authentication. This is the primary mechanism for cloud agents to interact with the local infrastructure.
+
+---
+
 ## Agents (10+ files)
 
 | File | Category | Status |
@@ -163,6 +178,14 @@ agent-startup/
 │       ├── todo_mcp.py (optional)
 │       └── memory_mcp.py (optional)
 │
+├── mcp-funnel/                   # ✅ NEW - Cloud Agent Gateway
+│   ├── README.md                  # Complete documentation
+│   ├── mcp_auth_proxy.py          # FastAPI authenticated proxy
+│   ├── generate_tokens.py         # Token management utility
+│   ├── config.yaml                # Tailscale + MCP configuration
+│   ├── bootstrap.sh               # Automated setup script
+│   └── requirements.txt           # Python dependencies
+│
 ├── schemas/
 │   ├── README.md
 │   ├── agent.schema.yaml
@@ -213,6 +236,7 @@ agent-startup/
 | Test Files | 5+ |
 | Agent Definitions | 6 complete, 7 needed |
 | MCP Servers | 2+ |
+| MCP Funnel (Cloud Gateway) | 6 |
 | Examples | 1+ |
 
 ---
@@ -251,6 +275,6 @@ find . -type f -name "*.yaml" | wc -l # YAML files
 
 ---
 
-**Last Updated**: 2026-01-04T08:30:00Z  
+**Last Updated**: 2026-01-09T10:00:00Z  
 **Repository**: https://github.com/jujo1/agent-startup  
-**Status**: Production-Ready (Core Features)
+**Status**: Production-Ready (Core Features + MCP Funnel)
