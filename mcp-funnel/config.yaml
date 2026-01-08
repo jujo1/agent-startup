@@ -1,0 +1,160 @@
+# MCP Auth Proxy Configuration
+# AGENTS 4.0 - Cloud Agent Gateway
+# 
+# This config controls the authentication proxy that sits between
+# Tailscale Funnel and local MCP servers.
+
+# Funnel endpoint configuration
+funnel:
+  # Your Tailscale hostname (update to your device)
+  hostname: cabin-pc.tail1a496.ts.net
+  port: 443
+  endpoints:
+    mcp: /mcp
+    health: /health
+    tools: /mcp/tools
+
+# Proxy server settings
+proxy:
+  # Local backend MCP server port
+  backend_port: 8080
+  # Port this proxy listens on
+  listen_port: 8081
+  # Host to bind to (127.0.0.1 = local only)
+  listen_host: "127.0.0.1"
+  # Maximum timestamp drift for replay attack prevention
+  max_timestamp_drift: 300  # seconds
+
+# File paths (supports ~ expansion)
+paths:
+  # Scripts directory
+  scripts: ~/.claude/mcp-funnel
+  # Bearer token storage
+  tokens: ~/.credentials/mcp_tokens.json
+  # Access logs
+  logs: ~/.claude/mcp-funnel/access.log
+
+# Tool whitelist - only these tools can be invoked remotely
+# Modify this list based on your security requirements
+allowed_tools:
+  # Connectivity & Status
+  - ping
+  - health
+  - get_status
+  
+  # File Operations (read-only by default)
+  - read_file
+  - list_directory
+  - list_dir
+  
+  # Search & Discovery
+  - search
+  - grep
+  - glob
+  - semantic_search
+  
+  # Git Operations (read-only)
+  - git_status
+  - git_diff
+  - git_log
+  - git_branch
+  
+  # Memory & Context (read-only)
+  - memory_read
+  - memory_search
+  
+  # Workflow (read-only)
+  - workflow_status
+  - workflow_list
+
+# Restricted tools - require explicit approval
+# Uncomment to enable (use with caution)
+# restricted_tools:
+#   - write_file
+#   - run_tests
+#   - git_commit
+#   - git_push
+#   - memory_write
+
+# Forbidden tools - NEVER allow remotely
+forbidden_tools:
+  - delete_file
+  - rm_rf
+  - format_drive
+  - sudo_*
+  - admin_*
+  - execute_arbitrary
+  - shell_exec
+
+# Rate limiting
+rate_limit:
+  # Maximum requests per minute per client
+  requests_per_minute: 60
+  # Maximum burst requests per second
+  burst: 10
+  # Per-tool limits (optional)
+  per_tool:
+    semantic_search: 30  # Expensive operation
+    write_file: 10       # Risky operation
+    run_tests: 5         # Long-running operation
+
+# Token configuration
+tokens:
+  # Days before tokens expire (0 = never)
+  rotate_days: 30
+  # Predefined purposes for generated tokens
+  purposes:
+    - claude_web_primary
+    - claude_code_primary
+    - rotation_backup
+  # Require tokens for all endpoints except /health
+  require_auth: true
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: INFO
+  # Log file path (supports ~ expansion)
+  file: ~/.claude/mcp-funnel/mcp_proxy.log
+  # Log to stdout as well
+  stdout: true
+  # Log request bodies (security risk - disable in production)
+  log_bodies: false
+  # Log successful requests (verbose)
+  log_success: true
+
+# Security settings
+security:
+  # Require HTTPS (Tailscale Funnel handles this)
+  require_https: true
+  # Block requests with no User-Agent
+  require_user_agent: false
+  # Validate JSON payloads
+  validate_json: true
+  # Maximum request body size (bytes)
+  max_body_size: 1048576  # 1MB
+
+# CORS settings (for web clients)
+cors:
+  enabled: true
+  allow_origins:
+    - "*"  # Allow all origins (restrict in production)
+  allow_methods:
+    - GET
+    - POST
+    - OPTIONS
+  allow_headers:
+    - Authorization
+    - Content-Type
+  max_age: 3600
+
+# Health check configuration
+health:
+  # Endpoint path
+  path: /health
+  # Include detailed stats
+  detailed: true
+  # Include uptime
+  include_uptime: true
+  # Include request count
+  include_requests: true
