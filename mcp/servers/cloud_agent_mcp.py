@@ -14,6 +14,15 @@ Environment Variables:
     MCP_HOST          - Host binding (default: 0.0.0.0)
     MCP_ALLOWED_PATHS - Comma-separated allowed path prefixes (empty = all)
     MCP_LOG_LEVEL     - Logging level (default: INFO)
+    MEMORY_FILE_PATH  - Knowledge graph storage (default: ~/.claude/memory.jsonl)
+    TODO_FILE_PATH    - Todo storage (default: ~/.claude/todos.json)
+
+Tools:
+    Filesystem: ping, get_status, read_file, list_directory, exec_command, grep, glob_files, write_file
+    Memory: create_entities, create_relations, add_observations, delete_entities, 
+            delete_relations, delete_observations, read_graph, search_nodes, open_nodes
+    Thinking: sequentialthinking, get_thinking_chain, reset_thinking
+    Todo: create_todo, list_todos, update_todo, complete_todo, delete_todo
 """
 
 from fastmcp import FastMCP, Context
@@ -36,8 +45,27 @@ LOG_LEVEL = os.getenv("MCP_LOG_LEVEL", "INFO")
 # Initialize FastMCP server
 mcp = FastMCP(
     name="CloudAgentMCP",
-    instructions="Lightweight MCP gateway for cloud agents. Provides file access, command execution, and search tools."
+    instructions="Lightweight MCP gateway for cloud agents. Provides file access, command execution, search, knowledge graph memory, sequential thinking, and todo management."
 )
+
+# Register additional tool modules
+try:
+    from memory_tools import register_memory_tools
+    register_memory_tools(mcp)
+except ImportError:
+    print("Warning: memory_tools not found, skipping knowledge graph tools")
+
+try:
+    from thinking_tools import register_thinking_tools
+    register_thinking_tools(mcp)
+except ImportError:
+    print("Warning: thinking_tools not found, skipping sequential thinking tools")
+
+try:
+    from todo_tools import register_todo_tools
+    register_todo_tools(mcp)
+except ImportError:
+    print("Warning: todo_tools not found, skipping todo management tools")
 
 
 def _validate_path(path: str) -> bool:
