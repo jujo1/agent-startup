@@ -1,12 +1,12 @@
 #!/bin/bash
 # AGENTS 4.0 - Automated Setup Script
-# Version: 1.0.0
+# Version: 1.1.0
 
 set -e
 
 echo "════════════════════════════════════════════════════════"
 echo "  AGENTS 4.0 - Automated Setup"
-echo "  Version: 1.0.0"
+echo "  Version: 1.1.0"
 echo "════════════════════════════════════════════════════════"
 echo ""
 
@@ -38,31 +38,46 @@ else
 fi
 
 # Step 1: Create directory structure
-echo "Step 1/5: Creating directory structure..."
-mkdir -p "${CLAUDE_HOME}"/{agents,mcp/servers,schemas,workflows,skills,logs}
+echo "Step 1/6: Creating directory structure..."
+mkdir -p "${CLAUDE_HOME}"/{agents,mcp/servers,schemas,workflows,skills,logs,data}
 mkdir -p "${WORKFLOW_HOME}"/{todo,evidence,logs,plans,parallel}
 mkdir -p "${CLAUDE_HOME}/agents"/{base,core,specialized,observers}
 echo -e "${GREEN}✓${NC} Directories created"
 echo ""
 
-# Step 2: Copy core files
-echo "Step 2/5: Copying core instruction files..."
-cp AGENTS_3.md "${CLAUDE_HOME}/"
-cp CLAUDE_2.md "${CLAUDE_HOME}/"
-cp SCHEMAS.md "${CLAUDE_HOME}/"
-cp QUICKSTART.md "${CLAUDE_HOME}/"
-cp MCP_SETUP.md "${CLAUDE_HOME}/"
+# Step 2: Set up persistent data paths
+echo "Step 2/6: Configuring persistent storage..."
+MEMORY_FILE="${CLAUDE_HOME}/data/memory.jsonl"
+TODO_FILE="${CLAUDE_HOME}/data/todos.json"
+
+# Create empty files if they don't exist
+touch "${MEMORY_FILE}"
+touch "${TODO_FILE}"
+[ ! -s "${TODO_FILE}" ] && echo "[]" > "${TODO_FILE}"
+
+echo -e "${GREEN}✓${NC} Persistent storage configured:"
+echo "    Memory: ${MEMORY_FILE}"
+echo "    Todos:  ${TODO_FILE}"
+echo ""
+
+# Step 3: Copy core files
+echo "Step 3/6: Copying core instruction files..."
+cp AGENTS_3.md "${CLAUDE_HOME}/" 2>/dev/null || true
+cp AGENTS_4.md "${CLAUDE_HOME}/" 2>/dev/null || true
+cp CLAUDE_2.md "${CLAUDE_HOME}/" 2>/dev/null || true
+cp SCHEMAS.md "${CLAUDE_HOME}/" 2>/dev/null || true
+cp QUICKSTART.md "${CLAUDE_HOME}/" 2>/dev/null || true
+cp MCP_SETUP.md "${CLAUDE_HOME}/" 2>/dev/null || true
 echo -e "${GREEN}✓${NC} Core files copied"
 echo ""
 
-# Step 3: Copy agent definitions
-echo "Step 3/5: Copying agent definitions..."
+# Step 4: Copy agent definitions
+echo "Step 4/6: Copying agent definitions..."
 if [ -d "agents" ]; then
     cp -r agents/* "${CLAUDE_HOME}/agents/"
     echo -e "${GREEN}✓${NC} Agent definitions copied"
 else
     echo -e "${YELLOW}⚠${NC} No agents directory found, creating templates..."
-    # Create template
     cat > "${CLAUDE_HOME}/agents/base/BASE.agent.yaml" << 'AGENT_EOF'
 # BASE Agent Template
 metadata:
@@ -80,8 +95,8 @@ AGENT_EOF
 fi
 echo ""
 
-# Step 4: Copy MCP servers
-echo "Step 4/5: Installing MCP servers..."
+# Step 5: Copy MCP servers
+echo "Step 5/6: Installing MCP servers..."
 if [ -d "mcp/servers" ]; then
     cp -r mcp/servers/* "${CLAUDE_HOME}/mcp/servers/"
     
@@ -89,8 +104,8 @@ if [ -d "mcp/servers" ]; then
     if [ -f "mcp/servers/requirements.txt" ]; then
         echo "Installing Python dependencies..."
         if command -v pip3 &> /dev/null; then
-            pip3 install --break-system-packages -r mcp/servers/requirements.txt || \
-            pip3 install --user -r mcp/servers/requirements.txt || \
+            pip3 install --break-system-packages -r mcp/servers/requirements.txt 2>/dev/null || \
+            pip3 install --user -r mcp/servers/requirements.txt 2>/dev/null || \
             echo -e "${YELLOW}⚠${NC} Could not install Python deps (install manually)"
         else
             echo -e "${YELLOW}⚠${NC} pip3 not found, skipping Python deps"
@@ -104,8 +119,8 @@ else
 fi
 echo ""
 
-# Step 5: Copy schemas
-echo "Step 5/5: Copying schemas..."
+# Step 6: Copy schemas
+echo "Step 6/6: Copying schemas..."
 if [ -d "schemas" ]; then
     cp -r schemas/* "${CLAUDE_HOME}/schemas/"
     echo -e "${GREEN}✓${NC} Schemas copied"
@@ -118,23 +133,17 @@ echo ""
 echo "Creating Claude settings template..."
 SETTINGS_FILE="${CLAUDE_HOME}/settings.json"
 if [ ! -f "${SETTINGS_FILE}" ]; then
-    cat > "${SETTINGS_FILE}" << 'SETTINGS_EOF'
+    cat > "${SETTINGS_FILE}" << SETTINGS_EOF
 {
   "mcpServers": {
-    "workflow-validator": {
+    "cloud-agent": {
       "command": "python3",
-      "args": ["~/.claude/mcp/servers/workflow_validator.py"],
+      "args": ["${CLAUDE_HOME}/mcp/servers/cloud_agent_mcp.py"],
       "env": {
-        "WORKFLOW_DB": "~/.workflow/workflow_state.db"
+        "MEMORY_FILE_PATH": "${MEMORY_FILE}",
+        "TODO_FILE_PATH": "${TODO_FILE}",
+        "MCP_ALLOWED_PATHS": ""
       }
-    },
-    "todo": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-todo"]
-    },
-    "memory": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
     }
   }
 }
@@ -142,8 +151,35 @@ SETTINGS_EOF
     echo -e "${GREEN}✓${NC} Settings template created"
 else
     echo -e "${YELLOW}⚠${NC} Settings file exists, not overwriting"
+    echo "    Add these env vars to your MCP server config:"
+    echo "    MEMORY_FILE_PATH=${MEMORY_FILE}"
+    echo "    TODO_FILE_PATH=${TODO_FILE}"
 fi
 echo ""
+
+# Create shell profile exports
+PROFILE_EXPORTS="
+# Claude Agent MCP Persistence Paths
+export MEMORY_FILE_PATH=\"${MEMORY_FILE}\"
+export TODO_FILE_PATH=\"${TODO_FILE}\"
+"
+
+echo "Adding environment variables to shell profile..."
+for PROFILE in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.profile"; do
+    if [ -f "$PROFILE" ]; then
+        if ! grep -q "MEMORY_FILE_PATH" "$PROFILE" 2>/dev/null; then
+            echo "$PROFILE_EXPORTS" >> "$PROFILE"
+            echo -e "${GREEN}✓${NC} Added to $PROFILE"
+        else
+            echo -e "${YELLOW}⚠${NC} Already in $PROFILE"
+        fi
+    fi
+done
+echo ""
+
+# Export for current session
+export MEMORY_FILE_PATH="${MEMORY_FILE}"
+export TODO_FILE_PATH="${TODO_FILE}"
 
 # Summary
 echo "════════════════════════════════════════════════════════"
@@ -153,6 +189,12 @@ echo ""
 echo "Installation locations:"
 echo "  • Claude config: ${CLAUDE_HOME}"
 echo "  • Workflows:     ${WORKFLOW_HOME}"
+echo "  • Memory file:   ${MEMORY_FILE}"
+echo "  • Todo file:     ${TODO_FILE}"
+echo ""
+echo "Environment variables (exported for this session):"
+echo "  • MEMORY_FILE_PATH=${MEMORY_FILE}"
+echo "  • TODO_FILE_PATH=${TODO_FILE}"
 echo ""
 echo "Next steps:"
 echo "  1. Review ${CLAUDE_HOME}/settings.json"
